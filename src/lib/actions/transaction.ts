@@ -47,6 +47,10 @@ import { namesAreSimilar } from "@/lib/payments/name-match";
 
 const createSchema = z.object({
   initiatedBy: z.enum(["buyer", "seller"]),
+  // Product = physical goods (dispatch + delivery). Service = work-for-hire
+  // (booking, repair, design, tutoring, etc). Defaults to product so older
+  // callers/seeds keep working.
+  orderType: z.enum(["product", "service"]).default("product"),
   buyerName: z.string().min(2),
   buyerPhone: z.string().min(7),
   buyerEmail: z.string().email().optional().or(z.literal("")),
@@ -181,6 +185,7 @@ export async function createTransaction(
           sellerEmail: canonicalSellerEmail,
           buyerEmail: data.buyerEmail || null,
           sellerMatchedBy,
+          orderType: data.orderType,
         },
       })
       .returning();
@@ -203,6 +208,7 @@ export async function createTransaction(
       payload: {
         ref,
         initiatedBy: data.initiatedBy,
+        orderType: data.orderType,
         productAmount,
         deliveryAmount,
         totalCharged: fees.totalCharged,

@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input, Label, Textarea, FieldHint } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, MessageCircle, Mail, Send } from "lucide-react";
+import { Copy, Check, MessageCircle, Mail, Send, Package, Wrench } from "lucide-react";
 import { calculateFees } from "@/lib/payments";
 import { formatGhs, ghsToPesewas } from "@/lib/utils";
 import { createTransaction } from "@/lib/actions/transaction";
@@ -16,7 +16,10 @@ const SELLER_BPS = 150;
 const RIDER_FEE = 200;
 const SELLER_RELEASE_FEE = 200;
 
+type OrderType = "product" | "service";
+
 type Form = {
+  orderType: OrderType;
   buyerName: string;
   buyerPhone: string;
   sellerName: string;
@@ -35,6 +38,7 @@ export interface SellerWizardPrefill {
 
 export function SellerWizard({ prefill }: { prefill?: SellerWizardPrefill } = {}) {
   const [form, setForm] = useState<Form>({
+    orderType: "product",
     buyerName: "",
     buyerPhone: "",
     sellerName: prefill?.sellerName ?? "",
@@ -45,6 +49,7 @@ export function SellerWizard({ prefill }: { prefill?: SellerWizardPrefill } = {}
     deliveryAddress: "Buyer to confirm",
     deliveryCity: "Accra",
   });
+  const isService = form.orderType === "service";
   const [link, setLink] = useState<{ ref: string; url: string } | null>(null);
   const [isPending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
@@ -81,6 +86,7 @@ export function SellerWizard({ prefill }: { prefill?: SellerWizardPrefill } = {}
     startTransition(async () => {
       const r = await createTransaction({
         initiatedBy: "seller",
+        orderType: form.orderType,
         buyerName: form.buyerName,
         buyerPhone: form.buyerPhone,
         sellerName: form.sellerName,
@@ -189,11 +195,19 @@ export function SellerWizard({ prefill }: { prefill?: SellerWizardPrefill } = {}
               </li>
               <li className="flex gap-3">
                 <span className="font-mono text-xs text-[var(--muted)]">02</span>
-                <span>You dispatch and tap &ldquo;Mark dispatched&rdquo; in your Hub.</span>
+                <span>
+                  {isService
+                    ? "Start the job and tap \u201cMark dispatched\u201d in your Hub when work begins."
+                    : "You dispatch and tap \u201cMark dispatched\u201d in your Hub."}
+                </span>
               </li>
               <li className="flex gap-3">
                 <span className="font-mono text-xs text-[var(--muted)]">03</span>
-                <span>Buyer releases the delivery code, or 72h auto-release fires.</span>
+                <span>
+                  {isService
+                    ? "Buyer confirms the work was completed and releases the code, or 72h auto-release fires."
+                    : "Buyer releases the delivery code, or 72h auto-release fires."}
+                </span>
               </li>
               <li className="flex gap-3">
                 <span className="font-mono text-xs text-[var(--muted)]">04</span>
@@ -262,13 +276,36 @@ export function SellerWizard({ prefill }: { prefill?: SellerWizardPrefill } = {}
         <hr className="border-[var(--border)]" />
 
         <div>
-          <h3 className="font-display text-xl font-semibold">The item</h3>
+          <h3 className="font-display text-xl font-semibold">
+            {isService ? "The service" : "The item"}
+          </h3>
         </div>
+
         <div>
-          <Label required>What's being sold</Label>
+          <Label required>Is this a product or a service?</Label>
+          <div className="mt-2 grid grid-cols-2 gap-3">
+            <TypeOption
+              icon={Package}
+              label="Product"
+              description="A physical item you ship to the buyer."
+              selected={form.orderType === "product"}
+              onClick={() => set("orderType", "product")}
+            />
+            <TypeOption
+              icon={Wrench}
+              label="Service"
+              description="Work you'll perform for the buyer."
+              selected={form.orderType === "service"}
+              onClick={() => set("orderType", "service")}
+            />
+          </div>
+        </div>
+
+        <div>
+          <Label required>{isService ? "What service are you offering?" : "What's being sold"}</Label>
           <Textarea
             rows={2}
-            placeholder="Black kente dress, size M"
+            placeholder={isService ? "e.g. Bridal makeup, 6 am call time, full glam look" : "Black kente dress, size M"}
             value={form.itemDescription}
             onChange={(e) => set("itemDescription", e.target.value)}
           />
@@ -284,7 +321,7 @@ export function SellerWizard({ prefill }: { prefill?: SellerWizardPrefill } = {}
             />
           </div>
           <div>
-            <Label>Delivery fee</Label>
+            <Label>{isService ? "Travel / call-out fee" : "Delivery fee"}</Label>
             <Input
               inputMode="decimal"
               leading="₵"
@@ -313,7 +350,9 @@ export function SellerWizard({ prefill }: { prefill?: SellerWizardPrefill } = {}
           </p>
           {fees.riderPayout > 0 && (
             <>
-              <p className="text-sm text-white/75 mt-4">Rider receives</p>
+              <p className="text-sm text-white/75 mt-4">
+                {isService ? "Travel fee paid through" : "Rider receives"}
+              </p>
               <p className="font-display text-2xl font-bold mt-1">
                 {formatGhs(fees.riderPayout)}
               </p>
@@ -322,5 +361,50 @@ export function SellerWizard({ prefill }: { prefill?: SellerWizardPrefill } = {}
         </Card>
       </aside>
     </div>
+  );
+}
+
+function TypeOption({
+  icon: Icon,
+  label,
+  description,
+  selected,
+  onClick,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  description: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={
+        "text-left rounded-[var(--radius-md)] border p-4 transition-all " +
+        (selected
+          ? "border-[var(--primary)] bg-[var(--primary-soft)] shadow-[var(--shadow-soft)]"
+          : "border-[var(--border-strong)] bg-[var(--surface)] hover:border-[var(--primary)]/40")
+      }
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className={
+            "inline-flex h-9 w-9 items-center justify-center rounded-lg " +
+            (selected
+              ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+              : "bg-[var(--surface-muted)] text-[var(--muted)]")
+          }
+        >
+          <Icon size={18} />
+        </span>
+        <p className={"font-display font-semibold " + (selected ? "text-[var(--primary)]" : "")}>
+          {label}
+        </p>
+      </div>
+      <p className="mt-2 text-xs text-[var(--muted)] leading-relaxed">{description}</p>
+    </button>
   );
 }

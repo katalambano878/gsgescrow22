@@ -78,7 +78,22 @@ export default async function TxnDetailPage({
             <Card className="p-6">
               <h2 className="font-display text-lg font-semibold">Order details</h2>
               <dl className="mt-5 grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                <Field label="Item" value={txn.itemDescription} />
+                <Field
+                  label="Type"
+                  value={
+                    (txn.metadata as { orderType?: string } | null)?.orderType === "service"
+                      ? "Service"
+                      : "Product"
+                  }
+                />
+                <Field
+                  label={
+                    (txn.metadata as { orderType?: string } | null)?.orderType === "service"
+                      ? "Service"
+                      : "Item"
+                  }
+                  value={txn.itemDescription}
+                />
                 {txn.itemLink && (
                   <Field
                     label="Link"
@@ -91,7 +106,14 @@ export default async function TxnDetailPage({
                 )}
                 <Field label="Buyer" value={`${txn.buyerName} · ${txn.buyerPhone}`} />
                 <Field label="Seller" value={`${txn.sellerName} · ${txn.sellerPhone}`} />
-                <Field label="Delivery to" value={`${txn.deliveryAddress}, ${txn.deliveryCity}`} />
+                <Field
+                  label={
+                    (txn.metadata as { orderType?: string } | null)?.orderType === "service"
+                      ? "Service location"
+                      : "Delivery to"
+                  }
+                  value={`${txn.deliveryAddress}, ${txn.deliveryCity}`}
+                />
                 <Field label="Initiated by" value={txn.initiatedBy} />
               </dl>
             </Card>
@@ -99,8 +121,22 @@ export default async function TxnDetailPage({
             <Card className="p-6">
               <h2 className="font-display text-lg font-semibold">Money</h2>
               <div className="mt-5 grid sm:grid-cols-2 gap-4">
-                <Money label="Product" value={txn.productAmount} />
-                <Money label="Delivery" value={txn.deliveryAmount} />
+                <Money
+                  label={
+                    (txn.metadata as { orderType?: string } | null)?.orderType === "service"
+                      ? "Service"
+                      : "Product"
+                  }
+                  value={txn.productAmount}
+                />
+                <Money
+                  label={
+                    (txn.metadata as { orderType?: string } | null)?.orderType === "service"
+                      ? "Travel / call-out"
+                      : "Delivery"
+                  }
+                  value={txn.deliveryAmount}
+                />
                 <Money label="Buyer fee" value={txn.buyerFee} />
                 <Money label="Rider release fee" value={txn.riderReleaseFee} />
                 <Money label="Seller release fee" value={txn.sellerReleaseFee} />

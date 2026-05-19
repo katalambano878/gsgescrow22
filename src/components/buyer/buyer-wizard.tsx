@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, ShieldCheck, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, ShieldCheck, Lock, Package, Wrench } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input, Label, Textarea, FieldHint } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,10 @@ const SELLER_BPS = 150;
 const RIDER_FEE = 200;
 const SELLER_RELEASE_FEE = 200;
 
+type OrderType = "product" | "service";
+
 type Form = {
+  orderType: OrderType;
   itemDescription: string;
   itemLink: string;
   productCedis: string;
@@ -40,6 +43,7 @@ const STEPS = [
 ];
 
 export interface BuyerWizardPrefill {
+  orderType?: OrderType;
   sellerHandle?: string;
   sellerName?: string;
   sellerPhone?: string;
@@ -61,6 +65,7 @@ export function BuyerWizard({
   const initial = prefill ?? { sellerHandle };
   const [step, setStep] = useState(initial.itemDescription && initial.productCedis ? 2 : 1);
   const [form, setForm] = useState<Form>({
+    orderType: initial.orderType ?? "product",
     itemDescription: initial.itemDescription ?? "",
     itemLink: initial.itemLink ?? "",
     productCedis: initial.productCedis ?? "",
@@ -75,6 +80,7 @@ export function BuyerWizard({
     deliveryAddress: "",
     deliveryCity: "Accra",
   });
+  const isService = form.orderType === "service";
   const [isPending, startTransition] = useTransition();
 
   const fees = useMemo(
@@ -121,6 +127,7 @@ export function BuyerWizard({
     startTransition(async () => {
       const r = await createTransaction({
         initiatedBy: "buyer",
+        orderType: form.orderType,
         buyerName: form.buyerName,
         buyerPhone: form.buyerPhone,
         buyerEmail: form.buyerEmail,
@@ -151,26 +158,61 @@ export function BuyerWizard({
         <Card className="p-6 sm:p-8 mt-6">
           {step === 1 && (
             <div className="space-y-5">
-              <h3 className="font-display text-xl font-semibold">What are you buying?</h3>
+              <h3 className="font-display text-xl font-semibold">
+                {isService ? "What service do you need?" : "What are you buying?"}
+              </h3>
+
               <div>
-                <Label htmlFor="item" required>What's the item?</Label>
+                <Label required>Is this a product or a service?</Label>
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  <TypeOption
+                    icon={Package}
+                    label="Product"
+                    description="A physical item that will be dispatched."
+                    selected={form.orderType === "product"}
+                    onClick={() => set("orderType", "product")}
+                  />
+                  <TypeOption
+                    icon={Wrench}
+                    label="Service"
+                    description="Work the seller will perform for you."
+                    selected={form.orderType === "service"}
+                    onClick={() => set("orderType", "service")}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="item" required>
+                  {isService ? "Describe the service" : "What's the item?"}
+                </Label>
                 <Textarea
                   id="item"
                   rows={3}
-                  placeholder="e.g. Black kente dress, size M, the one in the second photo"
+                  placeholder={
+                    isService
+                      ? "e.g. Bridal makeup, 6 am call time at the Tema address, full glam look"
+                      : "e.g. Black kente dress, size M, the one in the second photo"
+                  }
                   value={form.itemDescription}
                   onChange={(e) => set("itemDescription", e.target.value)}
                 />
               </div>
               <div>
-                <Label htmlFor="link">Link to the post (optional)</Label>
+                <Label htmlFor="link">
+                  {isService ? "Link to the post / portfolio (optional)" : "Link to the post (optional)"}
+                </Label>
                 <Input
                   id="link"
                   placeholder="https://instagram.com/p/..."
                   value={form.itemLink}
                   onChange={(e) => set("itemLink", e.target.value)}
                 />
-                <FieldHint>Pasting the IG/TikTok/WhatsApp link helps the seller match your DM faster.</FieldHint>
+                <FieldHint>
+                  {isService
+                    ? "Paste the IG/TikTok/portfolio link the seller showed you — keeps everyone on the same page."
+                    : "Pasting the IG/TikTok/WhatsApp link helps the seller match your DM faster."}
+                </FieldHint>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
@@ -184,7 +226,9 @@ export function BuyerWizard({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="delivery">Delivery fee (if any)</Label>
+                  <Label htmlFor="delivery">
+                    {isService ? "Travel / call-out fee (if any)" : "Delivery fee (if any)"}
+                  </Label>
                   <Input
                     id="delivery"
                     inputMode="decimal"
@@ -279,14 +323,26 @@ export function BuyerWizard({
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <Label htmlFor="da" required>Delivery address</Label>
+                  <Label htmlFor="da" required>
+                    {isService ? "Service location address" : "Delivery address"}
+                  </Label>
                   <Textarea
                     id="da"
                     rows={2}
-                    placeholder="House number, area, landmark"
+                    placeholder={
+                      isService
+                        ? "Where the service should happen — full address, area, landmark"
+                        : "House number, area, landmark"
+                    }
                     value={form.deliveryAddress}
                     onChange={(e) => set("deliveryAddress", e.target.value)}
                   />
+                  {isService && (
+                    <FieldHint>
+                      If it&rsquo;s remote (online tutoring, virtual design, etc) just say
+                      &ldquo;Remote&rdquo; here.
+                    </FieldHint>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="dc" required>City</Label>
@@ -304,18 +360,22 @@ export function BuyerWizard({
             <div className="space-y-5">
               <h3 className="font-display text-xl font-semibold">Review and pay</h3>
               <div className="rounded-[var(--radius-md)] border border-[var(--border)] divide-y divide-[var(--border)]">
-                <Detail label="Item" value={form.itemDescription} />
+                <Detail label="Type" value={isService ? "Service" : "Product"} />
+                <Detail label={isService ? "Service" : "Item"} value={form.itemDescription} />
                 <Detail label="Seller" value={`${form.sellerName} · ${form.sellerPhone}`} />
                 <Detail label="You" value={`${form.buyerName} · ${form.buyerPhone}`} />
-                <Detail label="Delivery to" value={`${form.deliveryAddress}, ${form.deliveryCity}`} />
+                <Detail
+                  label={isService ? "Service location" : "Delivery to"}
+                  value={`${form.deliveryAddress}, ${form.deliveryCity}`}
+                />
               </div>
               <div className="rounded-[var(--radius-md)] bg-[var(--surface-muted)] p-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-[var(--muted)]">Product</span>
+                  <span className="text-[var(--muted)]">{isService ? "Service" : "Product"}</span>
                   <span className="font-medium">{formatGhs(ghsToPesewas(form.productCedis || "0"))}</span>
                 </div>
                 <div className="flex justify-between text-sm mt-2">
-                  <span className="text-[var(--muted)]">Delivery</span>
+                  <span className="text-[var(--muted)]">{isService ? "Travel / call-out" : "Delivery"}</span>
                   <span className="font-medium">{formatGhs(ghsToPesewas(form.deliveryCedis || "0"))}</span>
                 </div>
                 <div className="flex justify-between text-sm mt-2">
@@ -324,7 +384,9 @@ export function BuyerWizard({
                 </div>
                 {fees.riderReleaseFee > 0 && (
                   <div className="flex justify-between text-sm mt-2">
-                    <span className="text-[var(--muted)]">Rider release fee</span>
+                    <span className="text-[var(--muted)]">
+                      {isService ? "Provider travel release fee" : "Rider release fee"}
+                    </span>
                     <span className="font-medium">{formatGhs(fees.riderReleaseFee)}</span>
                   </div>
                 )}
@@ -342,8 +404,9 @@ export function BuyerWizard({
               <div className="flex items-start gap-2 rounded-[var(--radius-md)] bg-[var(--primary-soft)] text-[var(--primary)] p-3">
                 <Lock size={16} className="mt-0.5 shrink-0" />
                 <p className="text-sm">
-                  Your money is held by Moolre until you confirm the goods
-                  arrived. SBBS staff cannot touch funds.
+                  {isService
+                    ? "Your money is held safely until you confirm the service was completed. SBBS staff cannot touch funds."
+                    : "Your money is held safely until you confirm the goods arrived. SBBS staff cannot touch funds."}
                 </p>
               </div>
             </div>
@@ -384,15 +447,23 @@ export function BuyerWizard({
           <ol className="mt-4 space-y-3 text-sm">
             <li className="flex gap-3">
               <span className="font-mono text-xs text-[var(--muted)]">01</span>
-              <span>You pay SBBS through Moolre.</span>
+              <span>You pay SBBS via Mobile Money or card.</span>
             </li>
             <li className="flex gap-3">
               <span className="font-mono text-xs text-[var(--muted)]">02</span>
-              <span>The seller is SMS&rsquo;d that funds are held and dispatches.</span>
+              <span>
+                {isService
+                  ? "The provider is SMS\u2019d that funds are held and begins the job."
+                  : "The seller is SMS\u2019d that funds are held and dispatches."}
+              </span>
             </li>
             <li className="flex gap-3">
               <span className="font-mono text-xs text-[var(--muted)]">03</span>
-              <span>You inspect, then release the delivery code.</span>
+              <span>
+                {isService
+                  ? "You confirm the work was completed, then share the delivery code."
+                  : "You inspect, then release the delivery code."}
+              </span>
             </li>
             <li className="flex gap-3">
               <span className="font-mono text-xs text-[var(--muted)]">04</span>
@@ -429,6 +500,51 @@ function Stepper({ step }: { step: number }) {
         </div>
       ))}
     </div>
+  );
+}
+
+function TypeOption({
+  icon: Icon,
+  label,
+  description,
+  selected,
+  onClick,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  description: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={
+        "text-left rounded-[var(--radius-md)] border p-4 transition-all " +
+        (selected
+          ? "border-[var(--primary)] bg-[var(--primary-soft)] shadow-[var(--shadow-soft)]"
+          : "border-[var(--border-strong)] bg-[var(--surface)] hover:border-[var(--primary)]/40")
+      }
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className={
+            "inline-flex h-9 w-9 items-center justify-center rounded-lg " +
+            (selected
+              ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+              : "bg-[var(--surface-muted)] text-[var(--muted)]")
+          }
+        >
+          <Icon size={18} />
+        </span>
+        <p className={"font-display font-semibold " + (selected ? "text-[var(--primary)]" : "")}>
+          {label}
+        </p>
+      </div>
+      <p className="mt-2 text-xs text-[var(--muted)] leading-relaxed">{description}</p>
+    </button>
   );
 }
 

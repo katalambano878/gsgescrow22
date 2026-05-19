@@ -83,9 +83,24 @@ export default async function AdminTxnDetailPage({
             <Card className="p-6">
               <h2 className="font-display text-lg font-semibold">Parties</h2>
               <dl className="mt-5 grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                <Field
+                  label="Type"
+                  value={
+                    (txn.metadata as { orderType?: string } | null)?.orderType === "service"
+                      ? "Service"
+                      : "Product"
+                  }
+                />
                 <Field label="Buyer" value={`${txn.buyerName} · ${txn.buyerPhone}`} />
                 <Field label="Seller" value={`${txn.sellerName} · ${txn.sellerPhone}`} />
-                <Field label="Delivery to" value={`${txn.deliveryAddress}, ${txn.deliveryCity}`} />
+                <Field
+                  label={
+                    (txn.metadata as { orderType?: string } | null)?.orderType === "service"
+                      ? "Service location"
+                      : "Delivery to"
+                  }
+                  value={`${txn.deliveryAddress}, ${txn.deliveryCity}`}
+                />
                 <Field label="Initiated by" value={txn.initiatedBy} />
               </dl>
             </Card>

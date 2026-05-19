@@ -30,8 +30,9 @@ export default async function BuyPage({
             Three steps. One safe deal.
           </h1>
           <p className="mt-4 text-lg text-[var(--muted)] max-w-2xl">
-            Tell us what you&rsquo;re buying, who from, and where to deliver.
-            We&rsquo;ll generate a protected payment link.
+            Buying a product or booking a service? Tell us the details, who you&rsquo;re paying, and
+            where to deliver or where the work happens. We&rsquo;ll generate a protected payment
+            link.
           </p>
           <div className="mt-10">
             <BuyerWizard

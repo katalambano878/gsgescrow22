@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { AppTopbar } from "@/components/app-shell/topbar";
 import { Badge } from "@/components/ui/badge";
 import { getSettings } from "@/lib/settings";
-import { isAuthLive, isDbLive, isEmailLive, isHubtelSmsLive, isMoolreSmsLive, isPaymentsLive, isPaystackLive, isSmsLive } from "@/lib/env";
+import { isAuthLive, isDbLive, isEmailLive, isHubtelSmsLive, isMoolreLive, isMoolreSmsLive, isPaymentsLive, isPaystackLive, isSmsLive } from "@/lib/env";
 import { CheckCircle2, XCircle, AlertTriangle, Zap } from "lucide-react";
 import { formatGhs } from "@/lib/utils";
 import { getPsp } from "@/lib/payments";
