@@ -603,7 +603,7 @@ export async function markPaid(ref: string): Promise<{ ok: boolean; error?: stri
 export async function markDispatched(
   ref: string,
   opts?: { riderName?: string; riderPhone?: string },
-): Promise<{ ok: boolean; error?: string; deliveryCode?: string }> {
+): Promise<{ ok: boolean; error?: string }> {
   const db = getDb();
   const [txn] = await db
     .select()
@@ -717,7 +717,11 @@ export async function markDispatched(
   }
 
   revalidatePath("/hub");
-  return { ok: true, deliveryCode: code };
+  // IMPORTANT: we never return the code to the caller. The code is hashed in
+  // the DB and only delivered to the buyer over SMS/email. The seller (and
+  // their browser/devtools) should never see it — otherwise a rogue seller
+  // could release funds without the buyer ever receiving the goods.
+  return { ok: true };
 }
 
 /**

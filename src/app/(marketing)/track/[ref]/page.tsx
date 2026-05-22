@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import { isDbLive } from "@/lib/env";
 import { redactPhone, formatGhs, relativeTime } from "@/lib/utils";
 import { stateLabel, type TxnState } from "@/lib/state/transaction";
+import { RiderConfirmCard } from "@/components/track/rider-confirm-card";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Track" };
@@ -100,6 +101,10 @@ export default async function TrackByRefPage({
               <Row label="Created" value={relativeTime(txn.createdAt)} />
               <Row label="Status" value={stateLabel(txn.state)} />
             </Card>
+            {(txn.state === "dispatched" || txn.state === "delivered") && (
+              <RiderConfirmCard txnRef={txn.ref} />
+            )}
+
             <div className="mt-6 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface)] p-4 flex items-start gap-3">
               <ShieldCheck size={18} className="text-[var(--primary)] mt-0.5 shrink-0" />
               <p className="text-sm text-[var(--muted)] leading-relaxed">

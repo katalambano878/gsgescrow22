@@ -156,7 +156,7 @@ export function dispatchedEmail(args: { ref: string; deliveryCode: string; itemD
   return layout(
     `<span class="pill warn">Out for delivery</span>
      <h1>Your order is on the way.</h1>
-     <p class="muted">${args.sellerName} has dispatched <strong>${escape(args.itemDescription)}</strong>. Inspect the goods first, then release the code below to the rider. Only release when you're satisfied.</p>
+     <p class="muted">${args.sellerName} has dispatched <strong>${escape(args.itemDescription)}</strong>. Inspect the goods first. When you're satisfied, share the code below with the rider — they need it to complete the delivery and release the seller's payout. The seller never sees this code.</p>
      <div style="font-family:ui-monospace,Menlo,monospace;font-size:36px;font-weight:800;letter-spacing:.3em;text-align:center;margin:24px 0;padding:16px;background:#E9E4F0;border-radius:12px;color:#3A1F75">${args.deliveryCode}</div>
      <p class="muted">If something is wrong at the door, open a dispute from your Hub — don't hand over the code.</p>
      <a class="btn" href="${env.NEXT_PUBLIC_APP_URL}/hub/transactions/${args.ref}">Open in Hub</a>`,

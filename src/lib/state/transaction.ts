@@ -18,7 +18,10 @@ const ALLOWED: Record<TxnState, TxnState[]> = {
   created: ["awaiting_payment", "cancelled"],
   awaiting_payment: ["paid", "cancelled"],
   paid: ["dispatched", "disputed", "cancelled"],
-  dispatched: ["delivered", "disputed"],
+  // Allow dispatched → released directly so the rider can release with the
+  // buyer's code at the door without first stopping at the optional
+  // "delivered" milestone (which is only the seller's confirmation tick).
+  dispatched: ["delivered", "released", "disputed"],
   delivered: ["released", "disputed"],
   released: ["payout_pending"],
   disputed: ["refund_issued", "partial_refund", "released", "payout_pending"],

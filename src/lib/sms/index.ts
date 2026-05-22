@@ -179,9 +179,9 @@ export const SmsTemplates = {
   paymentHeldBuyer: (buyerFirst: string, ref: string, amount: string) =>
     `${buyerFirst}, your ${amount} for ${ref} is held safely. The seller is notified. We'll SMS your delivery code on dispatch.`,
   dispatchedToBuyer: (ref: string, code: string) =>
-    `Your SBBS order ${ref} has been dispatched. Your delivery code is ${code} — give it to the rider ONLY after inspecting your item. sbbs.gh/hub`,
+    `SBBS ${ref} dispatched. YOUR delivery code: ${code}. Share it with the rider ONLY after you have inspected your item — the rider needs it to complete the order. Do not share with anyone else. sbbs.gh/track/${ref}`,
   dispatchedToSeller: (ref: string) =>
-    `Dispatch marked for ${ref}. We've sent the delivery code to the buyer. When they release it, your payout enters our approval queue.`,
+    `Dispatch marked for ${ref}. SBBS sent the 6-digit delivery code to the buyer (not to you). Your rider must collect it from the buyer at the door to release your payout.`,
   deliveredToBuyer: (ref: string) =>
     `Your SBBS order ${ref} has been marked DELIVERED by the seller. Inspect, then confirm in your Hub to release the payout. sbbs.gh/hub`,
   releasedToSeller: (ref: string) =>

@@ -35,16 +35,14 @@ export function TxnActions({
   const [showDispute, setShowDispute] = useState(false);
   const [reason, setReason] = useState("");
   const [description, setDescription] = useState("");
-  const [shownCode, setShownCode] = useState<string | null>(null);
 
-  function action(fn: () => Promise<{ ok: boolean; error?: string; deliveryCode?: string }>, success: string) {
+  function action(fn: () => Promise<{ ok: boolean; error?: string }>, success: string) {
     startTransition(async () => {
       const r = await fn();
       if (!r.ok) {
         toast.error(r.error ?? "Something went wrong");
         return;
       }
-      if (r.deliveryCode) setShownCode(r.deliveryCode);
       toast.success(success);
       router.refresh();
     });
@@ -87,21 +85,14 @@ export function TxnActions({
         </div>
       )}
 
-      {shownCode && (
-        <div className="rounded-md bg-[var(--accent-soft)] p-4 text-center">
-          <p className="text-xs uppercase tracking-[0.14em] font-semibold text-[var(--accent-foreground)]/80">
-            Buyer&rsquo;s delivery code
-          </p>
-          <p className="font-mono font-bold text-3xl mt-1">{shownCode}</p>
-          <p className="text-xs text-[var(--accent-foreground)]/80 mt-1">
-            Buyer hands this to the rider only after inspecting.
-          </p>
-        </div>
-      )}
-
       {canDispatch && (
         <div className="space-y-2">
           <p className="text-sm font-medium">Mark as dispatched</p>
+          <p className="text-xs text-[var(--muted)]">
+            We&rsquo;ll SMS a 6-digit delivery code straight to the buyer.
+            Your rider will ask the buyer for that code at the door to complete
+            the order — you never see it.
+          </p>
           <Input
             placeholder="Rider name (optional)"
             value={riderName}
@@ -118,7 +109,7 @@ export function TxnActions({
             onClick={() =>
               action(
                 () => markDispatched(txnRef, { riderName, riderPhone }),
-                "Marked dispatched. Buyer notified.",
+                "Marked dispatched. Buyer has the delivery code.",
               )
             }
           >
@@ -132,6 +123,8 @@ export function TxnActions({
           <p className="text-sm font-medium">Confirm delivery</p>
           <p className="text-xs text-[var(--muted)]">
             Inspect the goods first. Once you confirm, the seller&rsquo;s payout enters the queue.
+            <br />
+            The rider can also confirm directly using your 6-digit code (sent to you over SMS).
           </p>
           <Input
             inputMode="numeric"
