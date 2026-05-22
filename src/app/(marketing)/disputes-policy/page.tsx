@@ -44,7 +44,22 @@ export default function DisputesPolicyPage() {
 
       <h2>7. Release fees</h2>
       <p>
-        The rider release fee is collected when there&rsquo;s a delivery leg and is paid out separately when the transaction is dispatched. The seller release fee is a flat fee charged on every order to cover the cost of the seller payout transfer. Both release fees are generally not refunded, even if the product portion is, because the underlying dispatch and payout services have already been performed.
+        The rider release fee is collected from the buyer when there&rsquo;s a delivery leg and is paid
+        out separately when the transaction is dispatched. The seller release fee is deducted from the
+        seller&rsquo;s payout to cover the cost of the seller payout transfer — it never inflates the
+        buyer&rsquo;s total.
+      </p>
+      <p>
+        Both release fees follow the same channel-aware structure:
+      </p>
+      <ul>
+        <li><strong>MoMo (Moolre)</strong>: 1% of the released amount, capped at ₵10.</li>
+        <li><strong>Bank (Paystack)</strong>: flat ₵8 per transfer.</li>
+      </ul>
+      <p>
+        Release fees are generally not refunded, even if the product portion is, because the
+        underlying dispatch and payout services have already been performed. Other PSP, telco, and
+        bank fees may still apply on top of these.
       </p>
 
       <h2>8. Repeat disputes</h2>

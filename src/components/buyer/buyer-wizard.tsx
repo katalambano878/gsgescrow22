@@ -8,14 +8,9 @@ import { Card } from "@/components/ui/card";
 import { Input, Label, Textarea, FieldHint } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { calculateFees } from "@/lib/payments";
+import { calculateFees, DEFAULT_FEE_RATES } from "@/lib/payments";
 import { formatGhs, ghsToPesewas } from "@/lib/utils";
 import { createTransaction } from "@/lib/actions/transaction";
-
-const BUYER_BPS = 150;
-const SELLER_BPS = 150;
-const RIDER_FEE = 200;
-const SELLER_RELEASE_FEE = 200;
 
 type OrderType = "product" | "service";
 
@@ -88,10 +83,9 @@ export function BuyerWizard({
       calculateFees({
         productAmount: ghsToPesewas(form.productCedis || "0"),
         deliveryAmount: ghsToPesewas(form.deliveryCedis || "0"),
-        buyerFeeBps: BUYER_BPS,
-        sellerFeeBps: SELLER_BPS,
-        riderReleaseFee: RIDER_FEE,
-        sellerReleaseFee: SELLER_RELEASE_FEE,
+        riderPayoutChannel: "momo",
+        sellerPayoutChannel: "momo",
+        ...DEFAULT_FEE_RATES,
       }),
     [form.productCedis, form.deliveryCedis],
   );
@@ -390,16 +384,13 @@ export function BuyerWizard({
                     <span className="font-medium">{formatGhs(fees.riderReleaseFee)}</span>
                   </div>
                 )}
-                {fees.sellerReleaseFee > 0 && (
-                  <div className="flex justify-between text-sm mt-2">
-                    <span className="text-[var(--muted)]">Seller release fee</span>
-                    <span className="font-medium">{formatGhs(fees.sellerReleaseFee)}</span>
-                  </div>
-                )}
                 <div className="border-t border-[var(--border)] mt-3 pt-3 flex justify-between items-baseline">
                   <span className="font-semibold">You pay SBBS</span>
                   <span className="font-display font-bold text-2xl">{formatGhs(fees.totalCharged)}</span>
                 </div>
+                <p className="text-xs text-[var(--muted)] mt-2">
+                  The seller&rsquo;s release fee is deducted from their payout — not added to your total.
+                </p>
               </div>
               <div className="flex items-start gap-2 rounded-[var(--radius-md)] bg-[var(--primary-soft)] text-[var(--primary)] p-3">
                 <Lock size={16} className="mt-0.5 shrink-0" />

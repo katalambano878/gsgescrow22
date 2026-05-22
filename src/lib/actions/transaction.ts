@@ -114,13 +114,24 @@ export async function createTransaction(
     };
   }
 
+  // Today every order pays out via MoMo (Moolre). Once we onboard sellers'
+  // bank accounts we'll read the channel from the seller/rider profile here.
+  const riderPayoutChannel = "momo" as const;
+  const sellerPayoutChannel = "momo" as const;
+
   const fees = calculateFees({
     productAmount,
     deliveryAmount,
     buyerFeeBps: settings.buyer_fee_bps,
     sellerFeeBps: settings.seller_fee_bps,
-    riderReleaseFee: settings.rider_release_fee_pesewas,
-    sellerReleaseFee: settings.seller_release_fee_pesewas,
+    riderPayoutChannel,
+    sellerPayoutChannel,
+    riderReleaseMomoBps: settings.rider_release_momo_bps,
+    riderReleaseMomoCap: settings.rider_release_momo_cap_pesewas,
+    riderReleaseBank: settings.rider_release_bank_pesewas,
+    sellerReleaseMomoBps: settings.seller_release_momo_bps,
+    sellerReleaseMomoCap: settings.seller_release_momo_cap_pesewas,
+    sellerReleaseBank: settings.seller_release_bank_pesewas,
   });
 
   const profile = await getCurrentProfile().catch(() => null);
@@ -192,6 +203,8 @@ export async function createTransaction(
           buyerEmail: data.buyerEmail || null,
           sellerMatchedBy,
           orderType: data.orderType,
+          riderPayoutChannel,
+          sellerPayoutChannel,
         },
       })
       .returning();

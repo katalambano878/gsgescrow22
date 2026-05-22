@@ -13,6 +13,7 @@ import { eq, desc } from "drizzle-orm";
 import { getSessionUser } from "@/lib/auth/session";
 import { formatGhs, relativeTime } from "@/lib/utils";
 import type { TxnState } from "@/lib/state/transaction";
+import { channelLabel, type PayoutChannel } from "@/lib/payments/defaults";
 import { TxnActions } from "@/components/hub/txn-actions";
 import { TxnProgress } from "@/components/hub/txn-progress";
 import { ReviewForm } from "@/components/hub/review-form";
@@ -51,10 +52,15 @@ export default async function TxnDetailPage({
     .from(payouts)
     .where(eq(payouts.transactionId, txn.id));
   const payout = payoutRows[0];
+  const meta = (txn.metadata ?? {}) as {
+    orderType?: string;
+    riderPayoutChannel?: PayoutChannel;
+    sellerPayoutChannel?: PayoutChannel;
+  };
   const orderType =
-    (txn.metadata as { orderType?: string } | null)?.orderType === "service"
-      ? ("service" as const)
-      : ("product" as const);
+    meta.orderType === "service" ? ("service" as const) : ("product" as const);
+  const riderChannel: PayoutChannel = meta.riderPayoutChannel ?? "momo";
+  const sellerChannel: PayoutChannel = meta.sellerPayoutChannel ?? "momo";
 
   const [dispute] = await db
     .select()
@@ -165,11 +171,20 @@ export default async function TxnDetailPage({
                   value={txn.deliveryAmount}
                 />
                 <Money label="Buyer fee" value={txn.buyerFee} />
-                <Money label="Rider release fee" value={txn.riderReleaseFee} />
-                <Money label="Seller release fee" value={txn.sellerReleaseFee} />
+                <Money
+                  label={`Rider release · ${channelLabel(riderChannel)}`}
+                  value={txn.riderReleaseFee}
+                />
+                <Money
+                  label={`Seller release · ${channelLabel(sellerChannel)}`}
+                  value={txn.sellerReleaseFee}
+                />
                 <Money label="Seller payout" value={txn.sellerPayoutAmount} accent />
                 <Money label="Total charged" value={txn.totalCharged} bold />
               </div>
+              <p className="mt-3 text-xs text-[var(--muted)]">
+                Rider release is paid by the buyer. Seller release is deducted from the seller&rsquo;s payout.
+              </p>
             </Card>
 
             <Card className="p-6">

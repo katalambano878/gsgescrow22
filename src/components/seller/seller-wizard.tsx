@@ -7,14 +7,9 @@ import { Input, Label, Textarea, FieldHint } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Copy, Check, MessageCircle, Mail, Send, Package, Wrench } from "lucide-react";
-import { calculateFees } from "@/lib/payments";
+import { calculateFees, DEFAULT_FEE_RATES } from "@/lib/payments";
 import { formatGhs, ghsToPesewas } from "@/lib/utils";
 import { createTransaction } from "@/lib/actions/transaction";
-
-const BUYER_BPS = 150;
-const SELLER_BPS = 150;
-const RIDER_FEE = 200;
-const SELLER_RELEASE_FEE = 200;
 
 type OrderType = "product" | "service";
 
@@ -63,10 +58,9 @@ export function SellerWizard({ prefill }: { prefill?: SellerWizardPrefill } = {}
       calculateFees({
         productAmount: ghsToPesewas(form.productCedis || "0"),
         deliveryAmount: ghsToPesewas(form.deliveryCedis || "0"),
-        buyerFeeBps: BUYER_BPS,
-        sellerFeeBps: SELLER_BPS,
-        riderReleaseFee: RIDER_FEE,
-        sellerReleaseFee: SELLER_RELEASE_FEE,
+        riderPayoutChannel: "momo",
+        sellerPayoutChannel: "momo",
+        ...DEFAULT_FEE_RATES,
       }),
     [form.productCedis, form.deliveryCedis],
   );

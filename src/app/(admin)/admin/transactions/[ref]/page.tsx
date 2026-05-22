@@ -13,6 +13,7 @@ import { formatGhs, relativeTime } from "@/lib/utils";
 import type { TxnState } from "@/lib/state/transaction";
 import { PspPanel } from "@/components/admin/psp-panel";
 import { getPsp } from "@/lib/payments";
+import { channelLabel, type PayoutChannel } from "@/lib/payments/defaults";
 import { getCurrentProfile } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -112,8 +113,20 @@ export default async function AdminTxnDetailPage({
                 <Money label="Delivery" v={txn.deliveryAmount} />
                 <Money label="Buyer fee" v={txn.buyerFee} />
                 <Money label="Seller fee" v={txn.sellerFee} />
-                <Money label="Rider release fee" v={txn.riderReleaseFee} />
-                <Money label="Seller release fee" v={txn.sellerReleaseFee} />
+                <Money
+                  label={`Rider release · ${channelLabel(
+                    ((txn.metadata as { riderPayoutChannel?: PayoutChannel } | null)
+                      ?.riderPayoutChannel ?? "momo"),
+                  )}`}
+                  v={txn.riderReleaseFee}
+                />
+                <Money
+                  label={`Seller release · ${channelLabel(
+                    ((txn.metadata as { sellerPayoutChannel?: PayoutChannel } | null)
+                      ?.sellerPayoutChannel ?? "momo"),
+                  )}`}
+                  v={txn.sellerReleaseFee}
+                />
                 <Money label="PSP fee" v={txn.pspFee} />
                 <Money label="Total charged" v={txn.totalCharged} bold />
                 <Money label="Seller payout" v={txn.sellerPayoutAmount} accent />

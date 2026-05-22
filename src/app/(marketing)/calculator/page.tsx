@@ -12,9 +12,12 @@ export default function CalculatorPage() {
           See exactly what you&rsquo;ll pay.
         </h1>
         <p className="mt-4 text-lg text-[var(--muted)] max-w-2xl">
-          No hidden fees, no markup on Moolre rates. Two transparent
-          platform fees, a flat seller release fee, and a rider release fee
-          when there&rsquo;s a delivery component.
+          No hidden fees, no markup on Moolre or Paystack rates. Two platform fees plus
+          release fees that depend on the payout channel:
+          <span className="font-semibold text-[var(--foreground)]"> MoMo</span> is 1%
+          capped at ₵10, <span className="font-semibold text-[var(--foreground)]">Bank</span>{" "}
+          is a flat ₵8. The buyer covers the rider release fee, the seller release fee comes
+          out of the seller&rsquo;s payout.
         </p>
         <div className="mt-10">
           <CalculatorWidget />

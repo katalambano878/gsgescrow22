@@ -6,6 +6,7 @@ import { getDb } from "@/lib/db/client";
 import { transactions } from "@/lib/db/schema";
 import { isDbLive } from "@/lib/env";
 import { formatGhs } from "@/lib/utils";
+import { channelLabel, type PayoutChannel } from "@/lib/payments/defaults";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +36,13 @@ export async function GET(
   const [txn] = await getDb().select().from(transactions).where(eq(transactions.ref, ref)).limit(1);
   if (!txn) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const md = (txn.metadata ?? {}) as {
+    riderPayoutChannel?: PayoutChannel;
+    sellerPayoutChannel?: PayoutChannel;
+  };
+  const riderChannel: PayoutChannel = md.riderPayoutChannel ?? "momo";
+  const sellerChannel: PayoutChannel = md.sellerPayoutChannel ?? "momo";
+
   const buffer = await renderToBuffer(
     React.createElement(
       Document,
@@ -60,8 +68,14 @@ export async function GET(
           React.createElement(Row, { label: "Product", value: formatGhs(txn.productAmount) }),
           React.createElement(Row, { label: "Delivery", value: formatGhs(txn.deliveryAmount) }),
           React.createElement(Row, { label: "Buyer fee", value: formatGhs(txn.buyerFee) }),
-          React.createElement(Row, { label: "Rider release fee", value: formatGhs(txn.riderReleaseFee) }),
-          React.createElement(Row, { label: "Seller release fee", value: formatGhs(txn.sellerReleaseFee) }),
+          React.createElement(Row, {
+            label: `Rider release · ${channelLabel(riderChannel)}`,
+            value: formatGhs(txn.riderReleaseFee),
+          }),
+          React.createElement(Row, {
+            label: `Seller release · ${channelLabel(sellerChannel)}`,
+            value: formatGhs(txn.sellerReleaseFee),
+          }),
           React.createElement(View, { style: styles.hr }),
           React.createElement(View, { style: styles.row },
             React.createElement(Text, { style: styles.total }, "Total charged"),
