@@ -14,6 +14,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { formatGhs, relativeTime } from "@/lib/utils";
 import type { TxnState } from "@/lib/state/transaction";
 import { TxnActions } from "@/components/hub/txn-actions";
+import { TxnProgress } from "@/components/hub/txn-progress";
 import { ReviewForm } from "@/components/hub/review-form";
 import { EvidenceUploader } from "@/components/hub/evidence-uploader";
 
@@ -45,11 +46,15 @@ export default async function TxnDetailPage({
     .orderBy(desc(transactionEvents.createdAt))
     .limit(20);
 
-  const [payout] = await db
+  const payoutRows = await db
     .select()
     .from(payouts)
-    .where(eq(payouts.transactionId, txn.id))
-    .limit(1);
+    .where(eq(payouts.transactionId, txn.id));
+  const payout = payoutRows[0];
+  const orderType =
+    (txn.metadata as { orderType?: string } | null)?.orderType === "service"
+      ? ("service" as const)
+      : ("product" as const);
 
   const [dispute] = await db
     .select()
@@ -74,6 +79,28 @@ export default async function TxnDetailPage({
             >
               <ArrowLeft size={14} /> All transactions
             </Link>
+
+            <TxnProgress
+              txnRef={ref}
+              state={txn.state as TxnState}
+              orderType={orderType}
+              role={role}
+              createdAt={txn.createdAt}
+              paidAt={txn.paidAt}
+              dispatchedAt={txn.dispatchedAt}
+              deliveredAt={txn.deliveredAt}
+              releasedAt={txn.releasedAt}
+              completedAt={txn.completedAt}
+              cancelledAt={txn.cancelledAt}
+              riderPayoutAmount={txn.riderPayoutAmount}
+              sellerPayoutAmount={txn.sellerPayoutAmount}
+              payouts={payoutRows.map((p) => ({
+                kind: p.kind as "rider" | "seller",
+                state: p.state,
+                paidAt: p.paidAt,
+                amount: p.amount,
+              }))}
+            />
 
             <Card className="p-6">
               <h2 className="font-display text-lg font-semibold">Order details</h2>

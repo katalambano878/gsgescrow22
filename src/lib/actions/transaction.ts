@@ -698,6 +698,75 @@ export async function markDispatched(
   return { ok: true, deliveryCode: code };
 }
 
+/**
+ * Seller-only: tick the "Delivered" milestone after handing the order off,
+ * before the buyer confirms receipt. Moves state dispatched → delivered and
+ * SMS's the buyer to inspect + release. Does NOT release funds — only the
+ * buyer (via confirmDelivery) or the 72h auto-release does that.
+ */
+export async function markDelivered(
+  ref: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const db = getDb();
+  const [txn] = await db
+    .select()
+    .from(transactions)
+    .where(eq(transactions.ref, ref))
+    .limit(1);
+  if (!txn) return { ok: false, error: "Transaction not found" };
+
+  const actor = await getCurrentProfile().catch(() => null);
+  if (!actor) return { ok: false, error: "Sign in first" };
+  const isSeller = actor.id === txn.sellerId;
+  if (!isSeller && !isAdminRole(actor.role)) {
+    return { ok: false, error: "Only the seller can mark this as delivered." };
+  }
+
+  try {
+    assertTransition(txn.state as TxnState, "delivered");
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+
+  await db
+    .update(transactions)
+    .set({
+      state: "delivered",
+      deliveredAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(transactions.id, txn.id));
+
+  await db.insert(transactionEvents).values({
+    transactionId: txn.id,
+    fromState: txn.state,
+    toState: "delivered",
+    actorId: actor.id,
+    actorRole: actor.role,
+    note: "Seller marked delivered",
+  });
+
+  await audit({
+    action: "txn.deliver",
+    targetType: "transaction",
+    targetId: txn.id,
+    payload: { ref, actor: actor.email },
+  });
+
+  await sendSms({
+    to: txn.buyerPhone,
+    body: SmsTemplates.deliveredToBuyer(ref),
+    ref,
+    kind: "txn.delivered",
+    targetType: "transaction",
+    targetId: txn.id,
+  });
+
+  revalidatePath(`/hub/transactions/${ref}`);
+  revalidatePath("/hub");
+  return { ok: true };
+}
+
 export async function confirmDelivery(
   ref: string,
   enteredCode?: string,

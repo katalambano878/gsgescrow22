@@ -182,6 +182,8 @@ export const SmsTemplates = {
     `Your SBBS order ${ref} has been dispatched. Your delivery code is ${code} — give it to the rider ONLY after inspecting your item. sbbs.gh/hub`,
   dispatchedToSeller: (ref: string) =>
     `Dispatch marked for ${ref}. We've sent the delivery code to the buyer. When they release it, your payout enters our approval queue.`,
+  deliveredToBuyer: (ref: string) =>
+    `Your SBBS order ${ref} has been marked DELIVERED by the seller. Inspect, then confirm in your Hub to release the payout. sbbs.gh/hub`,
   releasedToSeller: (ref: string) =>
     `Order ${ref} confirmed. SBBS payout is queued for approval. You'll be notified again when funds hit your MoMo.`,
   autoReleasedSeller: (ref: string) =>
