@@ -13,7 +13,13 @@ import {
   alerts,
   profiles,
 } from "@/lib/db/schema";
-import { env, isDbLive, isMoolreLive, isPaystackLive } from "@/lib/env";
+import {
+  env,
+  isCardCheckoutEnabled,
+  isDbLive,
+  isMoolreLive,
+  isPaystackLive,
+} from "@/lib/env";
 import { audit } from "@/lib/audit/log";
 import { calculateFees, getPsp } from "@/lib/payments";
 import { moolrePsp } from "@/lib/payments/moolre";
@@ -392,15 +398,18 @@ export async function initializeCheckoutPayment(
     if (!isMoolreLive) {
       return {
         ok: false,
-        error: "Mobile Money checkout is not available. Pay with card instead.",
+        error: "Mobile Money checkout is not available right now.",
       };
     }
     psp = moolrePsp;
   } else {
-    if (!isPaystackLive) {
+    // Card checkout is gated by both Paystack credentials AND the
+    // CARD_PAYMENTS_ENABLED kill-switch so that tampered requests can't
+    // bypass the hidden UI.
+    if (!isCardCheckoutEnabled) {
       return {
         ok: false,
-        error: "Card checkout is not available. Pay with Mobile Money instead.",
+        error: "Card payments are temporarily unavailable. Please use Mobile Money.",
       };
     }
     psp = paystackForCharge;

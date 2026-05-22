@@ -8,7 +8,7 @@ import { CheckoutForm } from "@/components/buyer/checkout-form";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { transactions } from "@/lib/db/schema";
-import { isDbLive, isMoolreLive, isPaystackLive } from "@/lib/env";
+import { isCardCheckoutEnabled, isDbLive, isMoolreLive, isPaystackLive } from "@/lib/env";
 import { formatGhs } from "@/lib/utils";
 import { StateBadge } from "@/components/ui/badge";
 import type { TxnState } from "@/lib/state/transaction";
@@ -31,7 +31,11 @@ export default async function CheckoutPage({
 
   const stubMode = !isMoolreLive && !isPaystackLive;
   const momoAvailable = stubMode || isMoolreLive;
-  const cardAvailable = stubMode || isPaystackLive;
+  // Card checkout is only shown when both Paystack is configured AND the
+  // CARD_PAYMENTS_ENABLED kill-switch is on. In stub/dev mode the tile is
+  // also hidden to keep the UI clean and predictable.
+  const cardVisible = isCardCheckoutEnabled;
+  const cardAvailable = cardVisible;
 
   if (txn.state !== "awaiting_payment") {
     return (
@@ -71,11 +75,12 @@ export default async function CheckoutPage({
         <Container size="lg">
           <Eyebrow>Secure checkout</Eyebrow>
           <h1 className="font-display text-4xl sm:text-5xl font-bold mt-4 tracking-tight">
-            Choose how you&rsquo;d like to pay
+            {cardVisible ? "Choose how you’d like to pay" : "Pay with Mobile Money"}
           </h1>
           <p className="mt-4 text-lg text-[var(--muted)] max-w-2xl">
-            Pay with Ghana Mobile Money via Moolre, or with a bank card via Paystack. Funds stay
-            protected until delivery is confirmed — same deal, whichever method you pick.
+            {cardVisible
+              ? "Pay with Ghana Mobile Money via Moolre, or with a bank card via Paystack. Funds stay protected until delivery is confirmed — same deal, whichever method you pick."
+              : "Pay with Ghana Mobile Money via Moolre — MTN, Telecel, or AirtelTigo. Funds stay protected until delivery is confirmed."}
           </p>
 
           <Card className="mt-10 p-6 sm:p-8 max-w-xl">
@@ -95,6 +100,7 @@ export default async function CheckoutPage({
               totalLabel={formatGhs(txn.totalCharged)}
               momoAvailable={momoAvailable}
               cardAvailable={cardAvailable}
+              cardVisible={cardVisible}
             />
           </div>
 

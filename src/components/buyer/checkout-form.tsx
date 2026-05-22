@@ -11,11 +11,13 @@ export function CheckoutForm({
   totalLabel,
   momoAvailable,
   cardAvailable,
+  cardVisible = true,
 }: {
   refCode: string;
   totalLabel: string;
   momoAvailable: boolean;
   cardAvailable: boolean;
+  cardVisible?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -31,7 +33,11 @@ export function CheckoutForm({
   }
 
   return (
-    <div className="grid sm:grid-cols-2 gap-4 max-w-2xl">
+    <div
+      className={
+        "grid gap-4 " + (cardVisible ? "sm:grid-cols-2 max-w-2xl" : "max-w-md")
+      }
+    >
       <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-6 flex flex-col">
         <div className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary)]">
           <Smartphone size={22} />
@@ -52,25 +58,27 @@ export function CheckoutForm({
         </Button>
       </div>
 
-      <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-6 flex flex-col">
-        <div className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary)]">
-          <CreditCard size={22} />
+      {cardVisible && (
+        <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-6 flex flex-col">
+          <div className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[var(--primary-soft)] text-[var(--primary)]">
+            <CreditCard size={22} />
+          </div>
+          <h2 className="font-display font-semibold text-lg mt-4">Card payments</h2>
+          <p className="text-sm text-[var(--muted)] mt-2 flex-1">
+            Visa, Mastercard, and other cards accepted by Paystack — card channel only ({totalLabel}).
+          </p>
+          <Button
+            className="w-full mt-6"
+            variant="secondary"
+            loading={pending}
+            disabled={!cardAvailable}
+            title={!cardAvailable ? "Card checkout requires Paystack to be configured." : undefined}
+            onClick={() => pay("card")}
+          >
+            Pay with card
+          </Button>
         </div>
-        <h2 className="font-display font-semibold text-lg mt-4">Card payments</h2>
-        <p className="text-sm text-[var(--muted)] mt-2 flex-1">
-          Visa, Mastercard, and other cards accepted by Paystack — card channel only ({totalLabel}).
-        </p>
-        <Button
-          className="w-full mt-6"
-          variant="secondary"
-          loading={pending}
-          disabled={!cardAvailable}
-          title={!cardAvailable ? "Card checkout requires Paystack to be configured." : undefined}
-          onClick={() => pay("card")}
-        >
-          Pay with card
-        </Button>
-      </div>
+      )}
     </div>
   );
 }

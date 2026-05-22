@@ -32,6 +32,10 @@ const rawEnv = {
   PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY,
   PAYSTACK_PUBLIC_KEY: process.env.PAYSTACK_PUBLIC_KEY,
   PAYSTACK_WEBHOOK_SECRET: process.env.PAYSTACK_WEBHOOK_SECRET,
+  // Master kill-switch for card (Paystack) checkout. Set to "true" to re-enable
+  // the Card payments tile on /buy/checkout. Defaults to disabled so we only
+  // surface Mobile Money (Moolre) until card payments are re-validated.
+  CARD_PAYMENTS_ENABLED: process.env.CARD_PAYMENTS_ENABLED,
 
   MOOLRE_SMS_VASKEY: process.env.MOOLRE_SMS_VASKEY,
   MOOLRE_SMS_SENDER_ID: process.env.MOOLRE_SMS_SENDER_ID,
@@ -78,6 +82,10 @@ const schema = z.object({
   PAYSTACK_SECRET_KEY: z.string().optional(),
   PAYSTACK_PUBLIC_KEY: z.string().optional(),
   PAYSTACK_WEBHOOK_SECRET: z.string().optional(),
+  CARD_PAYMENTS_ENABLED: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1"),
 
   MOOLRE_SMS_VASKEY: z.string().optional(),
   MOOLRE_SMS_SENDER_ID: z.string().default("SBBS"),
@@ -132,6 +140,12 @@ export const isMoolreLive = Boolean(
     env.MOOLRE_ACCOUNT_NUMBER,
 );
 export const isPaystackLive = Boolean(env.PAYSTACK_SECRET_KEY);
+/**
+ * Whether card (Paystack) checkout should be offered to buyers. Even when
+ * Paystack secrets are configured, we still respect the kill-switch so the
+ * UI and the server action can be flipped together with a single env var.
+ */
+export const isCardCheckoutEnabled = isPaystackLive && env.CARD_PAYMENTS_ENABLED;
 export const isPaymentsLive = isMoolreLive || isPaystackLive;
 export const isMoolreSmsLive = Boolean(env.MOOLRE_SMS_VASKEY);
 export const isHubtelSmsLive = Boolean(env.HUBTEL_CLIENT_ID && env.HUBTEL_CLIENT_SECRET);

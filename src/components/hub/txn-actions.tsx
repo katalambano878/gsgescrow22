@@ -77,7 +77,7 @@ export function TxnActions({
         <div className="space-y-2">
           <p className="text-sm font-medium">Complete payment</p>
           <p className="text-xs text-[var(--muted)]">
-            Pay with Mobile Money (Moolre) or card (Paystack) on the checkout page.
+            Pay with Mobile Money on the secure checkout page.
           </p>
           <Link href={`/buy/checkout?ref=${encodeURIComponent(txnRef)}`} className="block">
             <Button className="w-full" size="sm">

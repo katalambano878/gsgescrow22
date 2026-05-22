@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { AppTopbar } from "@/components/app-shell/topbar";
 import { Badge } from "@/components/ui/badge";
 import { getSettings } from "@/lib/settings";
-import { isAuthLive, isDbLive, isEmailLive, isHubtelSmsLive, isMoolreLive, isMoolreSmsLive, isPaymentsLive, isPaystackLive, isSmsLive } from "@/lib/env";
+import { isAuthLive, isCardCheckoutEnabled, isDbLive, isEmailLive, isHubtelSmsLive, isMoolreLive, isMoolreSmsLive, isPaymentsLive, isPaystackLive, isSmsLive } from "@/lib/env";
 import { CheckCircle2, XCircle, AlertTriangle, Zap } from "lucide-react";
 import { formatGhs } from "@/lib/utils";
 import { getPsp } from "@/lib/payments";
@@ -83,7 +83,11 @@ export default async function RunbookPage() {
         ? "No PSP keys — using stub adapter"
         : [
             isMoolreLive ? "Moolre · Mobile Money checkout" : null,
-            isPaystackLive ? "Paystack · Card checkout" : null,
+            isPaystackLive
+              ? isCardCheckoutEnabled
+                ? "Paystack · Card checkout"
+                : "Paystack configured · Card checkout DISABLED (CARD_PAYMENTS_ENABLED)"
+              : null,
           ]
             .filter(Boolean)
             .join(" · ") || "PSP",
