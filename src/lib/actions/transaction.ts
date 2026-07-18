@@ -810,6 +810,19 @@ export async function confirmDelivery(
   //   2. Caller is the signed-in buyer on the deal — or an admin/approver.
   const actor = await getCurrentProfile().catch(() => null);
   if (enteredCode) {
+    // Public track page can call this without a session — throttle guesses
+    // so a 6-digit code can't be brute-forced at scale.
+    const { rateLimit } = await import("@/lib/idempotency");
+    const limit = rateLimit(`delivery-code:${ref}`, {
+      capacity: 8,
+      refillPerSec: 0.1,
+    });
+    if (!limit.ok) {
+      return {
+        ok: false,
+        error: "Too many incorrect code attempts. Wait a minute and try again.",
+      };
+    }
     const hash = crypto.createHash("sha256").update(enteredCode).digest("hex");
     if (hash !== txn.deliveryCodeHash) {
       return { ok: false, error: "Delivery code does not match" };

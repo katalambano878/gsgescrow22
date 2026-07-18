@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition } from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,9 +52,13 @@ export function MarketplaceFilters({
   const [isPending, startTransition] = useTransition();
   const [query, setQuery] = useState(q);
 
-  useEffect(() => {
+  // Sync the input when the URL's q changes (state-adjust-during-render
+  // pattern — avoids a cascading effect render).
+  const [prevQ, setPrevQ] = useState(q);
+  if (prevQ !== q) {
+    setPrevQ(q);
     setQuery(q);
-  }, [q]);
+  }
 
   function push(patch: Record<string, string | undefined>) {
     const next = new URLSearchParams(params.toString());

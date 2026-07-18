@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { payments, payouts, transactions, webhooksLog } from "@/lib/db/schema";
+import { payouts, transactions, webhooksLog } from "@/lib/db/schema";
 import { isDbLive } from "@/lib/env";
 import { getPsp } from "@/lib/payments";
 import { formatGhs } from "@/lib/utils";

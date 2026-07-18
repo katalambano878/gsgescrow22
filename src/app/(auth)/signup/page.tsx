@@ -17,7 +17,7 @@ export default async function SignupPage({
   return (
     <div>
       {claim ? (
-        <ClaimCallout role={claim.role} ref={claim.ref} />
+        <ClaimCallout role={claim.role} txnRef={claim.ref} />
       ) : null}
 
       <h1 className="font-display text-3xl font-bold tracking-tight">

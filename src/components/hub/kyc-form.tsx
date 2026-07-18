@@ -6,7 +6,6 @@ import { Upload, ShieldCheck, X, FileText } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { submitKyc } from "@/lib/actions/kyc";
 
 type DocType = "ghana_card" | "passport" | "drivers_license" | "voter_id";
@@ -60,7 +59,7 @@ export function KycForm({
         <div className="flex items-center gap-3">
           <ShieldCheck size={20} className="text-[var(--primary)]" />
           <div>
-            <p className="font-display font-semibold text-[var(--primary)]">You're verified.</p>
+            <p className="font-display font-semibold text-[var(--primary)]">You&rsquo;re verified.</p>
             <p className="text-sm text-[var(--primary)]/80 mt-0.5">
               Trust Badge enabled. Payouts above the soft-launch cap unlocked.
             </p>

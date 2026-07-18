@@ -32,9 +32,13 @@ export function AppMobileNav({
   const resolvedActive = active ?? pathname ?? undefined;
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
+  // Close the drawer whenever the route changes (state-adjust-during-render
+  // pattern — avoids a cascading effect render).
+  const [prevPath, setPrevPath] = useState(pathname);
+  if (prevPath !== pathname) {
+    setPrevPath(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     if (open) {

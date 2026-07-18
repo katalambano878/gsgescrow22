@@ -240,7 +240,7 @@ export function BuyerWizard({
               <h3 className="font-display text-xl font-semibold">Who from + where</h3>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="sn" required>Seller's name</Label>
+                  <Label htmlFor="sn" required>Seller&rsquo;s name</Label>
                   <Input
                     id="sn"
                     placeholder="e.g. Ama from your favourite shop"
@@ -249,7 +249,7 @@ export function BuyerWizard({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="sp" required>Seller's phone</Label>
+                  <Label htmlFor="sp" required>Seller&rsquo;s phone</Label>
                   <Input
                     id="sp"
                     placeholder="024 000 0000"
@@ -260,7 +260,7 @@ export function BuyerWizard({
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="se" required>Seller's email</Label>
+                  <Label htmlFor="se" required>Seller&rsquo;s email</Label>
                   <Input
                     id="se"
                     type="email"
@@ -274,7 +274,7 @@ export function BuyerWizard({
                   </FieldHint>
                 </div>
                 <div>
-                  <Label htmlFor="sh">Seller's SBBS handle (optional)</Label>
+                  <Label htmlFor="sh">Seller&rsquo;s SBBS handle (optional)</Label>
                   <Input
                     id="sh"
                     placeholder="@kentecouture"

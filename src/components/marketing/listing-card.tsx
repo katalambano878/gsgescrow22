@@ -1,8 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
 import { ShieldCheck, Sparkles, MapPin, BadgeCheck } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { formatGhs } from "@/lib/utils";
 import { publicListingUrl } from "@/lib/storage";
 

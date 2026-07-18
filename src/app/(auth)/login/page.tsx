@@ -15,7 +15,7 @@ export default async function LoginPage({
   const claim = sp.claim ? verifyClaim(sp.claim) : null;
   return (
     <div>
-      {claim ? <ClaimCallout role={claim.role} ref={claim.ref} /> : null}
+      {claim ? <ClaimCallout role={claim.role} txnRef={claim.ref} /> : null}
       <h1 className="font-display text-3xl font-bold tracking-tight">
         {claim ? "Log in to claim the order" : "Welcome back."}
       </h1>

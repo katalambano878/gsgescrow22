@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ShieldCheck, Truck, Receipt, AlertTriangle, MessageCircle, Star } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Receipt } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

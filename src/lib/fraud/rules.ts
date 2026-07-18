@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { alerts, disputes, payouts, profiles, transactions } from "@/lib/db/schema";
 import { getSettings } from "@/lib/settings";

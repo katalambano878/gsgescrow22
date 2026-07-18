@@ -34,24 +34,30 @@ export function LiveTicker() {
     tables: ["transactions", "payouts", "alerts"],
   });
 
-  useEffect(() => {
-    if (realtimeEvents.length === 0) return;
-    const latest = realtimeEvents[0];
-    if (latest.table !== "transactions") return;
-    const row = latest.row as Partial<TxnEvent> & { id?: string };
-    if (!row.id || !row.ref) return;
-    setEvents((prev) => [
-      {
-        id: String(row.id),
-        ref: String(row.ref),
-        state: String(row.state ?? ""),
-        item: String((row as unknown as { item_description?: string }).item_description ?? ""),
-        total: Number((row as unknown as { total_charged?: number }).total_charged ?? 0),
-        at: latest.receivedAt,
-      },
-      ...prev,
-    ].slice(0, 12));
-  }, [realtimeEvents]);
+  // Fold new realtime rows into the ticker using the state-adjust-during-
+  // render pattern (guarded by receivedAt) instead of a setState-in-effect,
+  // which can cascade renders.
+  const [lastRealtimeAt, setLastRealtimeAt] = useState<string | null>(null);
+  const latestRealtime = realtimeEvents[0];
+  if (latestRealtime && latestRealtime.receivedAt !== lastRealtimeAt) {
+    setLastRealtimeAt(latestRealtime.receivedAt);
+    if (latestRealtime.table === "transactions") {
+      const row = latestRealtime.row as Partial<TxnEvent> & { id?: string };
+      if (row.id && row.ref) {
+        setEvents((prev) => [
+          {
+            id: String(row.id),
+            ref: String(row.ref),
+            state: String(row.state ?? ""),
+            item: String((row as unknown as { item_description?: string }).item_description ?? ""),
+            total: Number((row as unknown as { total_charged?: number }).total_charged ?? 0),
+            at: latestRealtime.receivedAt,
+          },
+          ...prev,
+        ].slice(0, 12));
+      }
+    }
+  }
 
   useEffect(() => {
     let es: EventSource | null = null;

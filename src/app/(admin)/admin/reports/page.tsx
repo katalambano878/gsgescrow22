@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { AppTopbar } from "@/components/app-shell/topbar";
 import { isDbLive } from "@/lib/env";
 import { getDb } from "@/lib/db/client";
-import { transactions, disputes } from "@/lib/db/schema";
+import { disputes } from "@/lib/db/schema";
 import { sql } from "drizzle-orm";
 import { formatGhs } from "@/lib/utils";
 import { BarChart3, Download } from "lucide-react";
@@ -59,13 +59,17 @@ export default async function AdminReportsPage() {
         subtitle="Monthly GMV and dispute outcomes"
         actions={
           <div className="flex gap-2">
-            <a href="/api/admin/export/transactions">
+            {/* CSV downloads must be plain <a> tags (API routes, not pages). */}
+            { }
+            <a href="/api/admin/export/transactions" download>
               <Button variant="secondary" size="sm"><Download size={14} /> Transactions</Button>
             </a>
-            <a href="/api/admin/export/payouts">
+            { }
+            <a href="/api/admin/export/payouts" download>
               <Button variant="secondary" size="sm"><Download size={14} /> Payouts</Button>
             </a>
-            <a href="/api/admin/export/reviews">
+            { }
+            <a href="/api/admin/export/reviews" download>
               <Button variant="secondary" size="sm"><Download size={14} /> Reviews</Button>
             </a>
           </div>

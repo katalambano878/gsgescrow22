@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
-import { Badge, StateBadge } from "@/components/ui/badge";
+import { StateBadge } from "@/components/ui/badge";
 import { AppTopbar } from "@/components/app-shell/topbar";
 import { Activity, Wallet, AlertTriangle, ShieldCheck, ArrowUpRight, Bell } from "lucide-react";
 import { LiveTicker } from "@/components/admin/live-ticker";
 import { AlertRow } from "@/components/admin/alert-row";
 import { isDbLive } from "@/lib/env";
 import { getDb } from "@/lib/db/client";
-import { transactions, payouts, disputes, alerts, profiles } from "@/lib/db/schema";
-import { desc, sql, eq } from "drizzle-orm";
+import { transactions, payouts, alerts, profiles } from "@/lib/db/schema";
+import { desc, sql } from "drizzle-orm";
 import { formatGhs, relativeTime } from "@/lib/utils";
 import type { TxnState } from "@/lib/state/transaction";
 

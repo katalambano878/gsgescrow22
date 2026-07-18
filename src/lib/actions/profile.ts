@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { profiles } from "@/lib/db/schema";
 import { isDbLive } from "@/lib/env";

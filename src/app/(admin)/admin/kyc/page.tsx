@@ -9,8 +9,6 @@ import { getDb } from "@/lib/db/client";
 import { kycSubmissions, profiles } from "@/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { relativeTime } from "@/lib/utils";
-import { KycReviewActions } from "@/components/admin/kyc-review-actions";
-
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Admin · KYC" };
 

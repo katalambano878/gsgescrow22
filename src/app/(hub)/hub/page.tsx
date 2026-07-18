@@ -10,7 +10,7 @@ import { getSessionUser, getCurrentProfile } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/client";
 import { transactions } from "@/lib/db/schema";
 import { desc, eq, or, sql } from "drizzle-orm";
-import { formatGhs, relativeTime } from "@/lib/utils";
+import { formatGhs } from "@/lib/utils";
 import type { TxnState } from "@/lib/state/transaction";
 import { OnboardingChecklist } from "@/components/hub/onboarding-checklist";
 import { ActivityFeed } from "@/components/hub/activity-feed";

@@ -1,5 +1,4 @@
 import { cache } from "react";
-import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { platformSettings } from "@/lib/db/schema";
 import { env, isDbLive } from "@/lib/env";

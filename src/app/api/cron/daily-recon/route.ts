@@ -1,18 +1,16 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
-import { env, isDbLive } from "@/lib/env";
+import { isDbLive } from "@/lib/env";
 import { emailReconReport, runDailyReconciliation } from "@/lib/recon/daily";
 import { setLastReconReport } from "@/lib/recon/store";
 import { audit } from "@/lib/audit/log";
+import { assertCronAuthorized } from "@/lib/cron/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const auth = (await headers()).get("authorization") ?? "";
-  if (env.CRON_SECRET && auth !== `Bearer ${env.CRON_SECRET}`) {
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  }
+  const denied = await assertCronAuthorized();
+  if (denied) return denied;
   if (!isDbLive) {
     return NextResponse.json({ ok: true, note: "DB not configured" });
   }
