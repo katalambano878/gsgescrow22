@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { autoReleaseSweep } from "@/lib/actions/transaction";
+import { autoReleaseSweep } from "@/lib/txn/sweeps";
 import { isDbLive } from "@/lib/env";
 import { assertCronAuthorized } from "@/lib/cron/auth";
 

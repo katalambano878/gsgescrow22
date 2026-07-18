@@ -7,6 +7,7 @@ import { transactions } from "@/lib/db/schema";
 import { isDbLive } from "@/lib/env";
 import { formatGhs } from "@/lib/utils";
 import { channelLabel, type PayoutChannel } from "@/lib/payments/defaults";
+import { getSessionUser, getCurrentProfile, isAdminRole } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +36,18 @@ export async function GET(
   if (!isDbLive) return NextResponse.json({ error: "DB not configured" }, { status: 503 });
   const [txn] = await getDb().select().from(transactions).where(eq(transactions.ref, ref)).limit(1);
   if (!txn) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Receipts contain full phones/addresses — parties + admins only.
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  }
+  const profile = await getCurrentProfile().catch(() => null);
+  const isParty = user.id === txn.buyerId || user.id === txn.sellerId;
+  const isAdmin = profile ? isAdminRole(profile.role) : false;
+  if (!isParty && !isAdmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const md = (txn.metadata ?? {}) as {
     riderPayoutChannel?: PayoutChannel;

@@ -10,10 +10,10 @@ import { getCurrentProfile, isAdminRole } from "@/lib/auth/session";
 import { getPsp } from "@/lib/payments";
 import { getChargeAdapterForTxn } from "@/lib/payments/charge-adapter";
 import {
-  markPaid,
   queueSellerPayout,
   executePayoutTransfer,
 } from "@/lib/actions/transaction";
+import { markPaidCore } from "@/lib/txn/mark-paid";
 import { isMoneyHeld, type TxnState } from "@/lib/state/transaction";
 import { sendSms, SmsTemplates } from "@/lib/sms";
 
@@ -51,8 +51,8 @@ export async function forceMarkPaid(
     payload: { actor: actor.email, ref, previousState: txn.state },
   });
 
-  const r = await markPaid(ref);
-  if (!r.ok) return { ok: false, error: r.error ?? "markPaid failed" };
+  const r = await markPaidCore(ref);
+  if (!r.ok) return { ok: false, error: r.error ?? "markPaidCore failed" };
 
   revalidatePath(`/admin/transactions/${ref}`);
   revalidatePath(`/admin/transactions`);
@@ -97,8 +97,8 @@ export async function reverifyPayment(
     });
 
     if (v.status === "succeeded" && txn.state === "awaiting_payment") {
-      const r = await markPaid(ref);
-      if (!r.ok) return { ok: false, error: r.error ?? "markPaid failed" };
+      const r = await markPaidCore(ref);
+      if (!r.ok) return { ok: false, error: r.error ?? "markPaidCore failed" };
       revalidatePath(`/admin/transactions/${ref}`);
       return {
         ok: true,

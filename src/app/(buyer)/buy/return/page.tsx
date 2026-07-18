@@ -8,7 +8,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { transactions } from "@/lib/db/schema";
 import { isDbLive, isPaymentsLive } from "@/lib/env";
-import { markPaid } from "@/lib/actions/transaction";
+import { markPaidCore } from "@/lib/txn/mark-paid";
 import { getChargeAdapterForTxn } from "@/lib/payments/charge-adapter";
 import { stateLabel, type TxnState } from "@/lib/state/transaction";
 import { StateBadge } from "@/components/ui/badge";
@@ -57,8 +57,13 @@ export default async function ReturnPage({
       .limit(1);
 
     if (sp.stub === "1" || !isPaymentsLive) {
-      console.log(`[buy/return] ref=${ref} stub path → markPaid`);
-      await markPaid(ref);
+      // Never settle for free in production. Stub path is local/dev only.
+      if (process.env.NODE_ENV === "production" || process.env.VERCEL === "1") {
+        console.warn(`[buy/return] ref=${ref} stub/no-PSP path blocked in production`);
+      } else {
+        console.log(`[buy/return] ref=${ref} stub path → markPaidCore`);
+        await markPaidCore(ref);
+      }
     } else if (t) {
       const chargePsp = await getChargeAdapterForTxn(t.id);
       const v = await withDeadline(
@@ -73,7 +78,7 @@ export default async function ReturnPage({
         `[buy/return] ref=${ref} via=${chargePsp.provider} verifyCharge=${v?.status ?? "timeout"}`,
       );
       if (v?.status === "succeeded") {
-        const r = await markPaid(ref);
+        const r = await markPaidCore(ref);
         console.log(
           `[buy/return] ref=${ref} markPaid ok=${r.ok} error=${"error" in r ? r.error : ""}`,
         );

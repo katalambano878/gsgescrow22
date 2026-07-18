@@ -38,21 +38,38 @@ export async function openDispute(input: z.infer<typeof openSchema>) {
     .limit(1);
   if (!txn) return { ok: false, error: "Transaction not found" };
   if (parsed.data.role === "guest") return { ok: false, error: "Sign in to open a dispute" };
+
+  const profile = await getCurrentProfile().catch(() => null);
+  if (!profile) return { ok: false, error: "Sign in to open a dispute" };
+  const isBuyer = profile.id === txn.buyerId;
+  const isSeller = profile.id === txn.sellerId;
+  if (!isBuyer && !isSeller && !isAdminRole(profile.role)) {
+    return { ok: false, error: "Only the buyer or seller on this deal can open a dispute." };
+  }
+  // Don't trust the client-supplied role — derive it from the session.
+  const openerRole: "buyer" | "seller" =
+    isAdminRole(profile.role)
+      ? parsed.data.role === "seller"
+        ? "seller"
+        : "buyer"
+      : isSeller
+        ? "seller"
+        : "buyer";
+
   try {
     assertTransition(txn.state as TxnState, "disputed");
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
 
-  const profile = await getCurrentProfile().catch(() => null);
   await db
     .update(transactions)
     .set({ state: "disputed", updatedAt: new Date() })
     .where(eq(transactions.id, txn.id));
   await db.insert(disputes).values({
     transactionId: txn.id,
-    openedBy: profile?.id ?? null,
-    openerRole: parsed.data.role,
+    openedBy: profile.id,
+    openerRole,
     reason: parsed.data.reason,
     description: parsed.data.description ?? null,
     state: "open",
@@ -62,8 +79,8 @@ export async function openDispute(input: z.infer<typeof openSchema>) {
     transactionId: txn.id,
     fromState: txn.state,
     toState: "disputed",
-    actorId: profile?.id ?? null,
-    actorRole: parsed.data.role,
+    actorId: profile.id,
+    actorRole: openerRole,
     note: `Dispute opened: ${parsed.data.reason}`,
   });
   await audit({

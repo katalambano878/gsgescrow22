@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { moolrePsp } from "@/lib/payments";
-import { markPaid } from "@/lib/actions/transaction";
+import { markPaidCore } from "@/lib/txn/mark-paid";
 import { getDb } from "@/lib/db/client";
 import { payouts, webhooksLog } from "@/lib/db/schema";
 import { isDbLive } from "@/lib/env";
@@ -110,7 +110,7 @@ export async function POST(req: Request) {
       const verified = await moolrePsp.verifyCharge(externalRef);
       verifiedStatus = verified.status;
       if (verified.status === "succeeded") {
-        const r = await markPaid(externalRef);
+        const r = await markPaidCore(externalRef);
         settled = true;
         if (!r.ok && r.error !== undefined && !/already/i.test(r.error)) {
           await audit({
@@ -136,7 +136,7 @@ export async function POST(req: Request) {
     // only Moolre should know it. We record this path in the audit log so ops
     // can monitor for abuse.
     if (!settled && txStatusFromPayload === 1) {
-      const r = await markPaid(externalRef);
+      const r = await markPaidCore(externalRef);
       settled = true;
       await audit({
         action: "webhook.received",

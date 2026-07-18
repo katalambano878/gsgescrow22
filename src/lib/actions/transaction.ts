@@ -496,108 +496,18 @@ export async function initializeCheckoutPayment(
   return { ok: true, authorizationUrl: init.authorizationUrl };
 }
 
+/**
+ * Admin-only Server Action. Webhooks / return page / crons must import
+ * `markPaidCore` from `@/lib/txn/mark-paid` — never call this without a session.
+ */
 export async function markPaid(ref: string): Promise<{ ok: boolean; error?: string }> {
-  // Webhooks (no session) and admin callers are the only legit invokers.
-  // A logged-in non-admin trying to forge payment must be rejected.
+  // Server Action surface: admin-only. Webhooks / return / cron use markPaidCore.
   const actor = await getCurrentProfile().catch(() => null);
-  if (actor && !isAdminRole(actor.role)) {
+  if (!actor || !isAdminRole(actor.role)) {
     return { ok: false, error: "Not authorized" };
   }
-  return idempotent(`txn:paid:${ref}`, async () => {
-    const db = getDb();
-    const [txn] = await db
-      .select()
-      .from(transactions)
-      .where(eq(transactions.ref, ref))
-      .limit(1);
-    if (!txn) return { ok: false, error: "Transaction not found" };
-    if (txn.state !== "awaiting_payment") return { ok: true };
-
-    try {
-      assertTransition(txn.state as TxnState, "paid");
-    } catch (e) {
-      return { ok: false, error: (e as Error).message };
-    }
-
-    const code = generateDeliveryCode();
-    const codeHash = crypto.createHash("sha256").update(code).digest("hex");
-
-    await db
-      .update(transactions)
-      .set({
-        state: "paid",
-        paidAt: new Date(),
-        deliveryCodeHash: codeHash,
-        updatedAt: new Date(),
-      })
-      .where(eq(transactions.id, txn.id));
-
-    await db
-      .update(payments)
-      .set({ state: "succeeded", updatedAt: new Date() })
-      .where(
-        and(
-          eq(payments.transactionId, txn.id),
-          inArray(payments.state, ["initialized", "pending"]),
-        ),
-      );
-
-    await db.insert(transactionEvents).values({
-      transactionId: txn.id,
-      fromState: txn.state,
-      toState: "paid",
-      note: "Payment captured by PSP",
-    });
-
-    await audit({
-      action: "txn.pay",
-      targetType: "transaction",
-      targetId: txn.id,
-      payload: { ref, totalCharged: txn.totalCharged },
-    });
-
-    await sendSms({
-      to: txn.sellerPhone,
-      body: SmsTemplates.paymentReceived(
-        txn.sellerName.split(" ")[0],
-        ref,
-        formatGhs(txn.totalCharged),
-      ),
-      ref,
-      kind: "txn.paid",
-      targetType: "transaction",
-      targetId: txn.id,
-    });
-    await sendSms({
-      to: txn.buyerPhone,
-      body: SmsTemplates.paymentHeldBuyer(
-        txn.buyerName.split(" ")[0],
-        ref,
-        formatGhs(txn.totalCharged),
-      ),
-      ref,
-      kind: "txn.paid",
-      targetType: "transaction",
-      targetId: txn.id,
-    });
-
-    const buyerEmail = (txn.metadata as { buyerEmail?: string } | null)?.buyerEmail;
-    if (buyerEmail) {
-      await sendEmail({
-        to: buyerEmail,
-        subject: `Payment held safely · ${ref}`,
-        html: paymentReceivedEmail({
-          ref,
-          sellerName: txn.sellerName,
-          itemDescription: txn.itemDescription,
-          totalCharged: txn.totalCharged,
-        }),
-        tags: [{ name: "event", value: "txn.paid" }, { name: "ref", value: ref }],
-      });
-    }
-
-    return { ok: true };
-  });
+  const { markPaidCore } = await import("@/lib/txn/mark-paid");
+  return markPaidCore(ref);
 }
 
 export async function markDispatched(
@@ -1156,6 +1066,13 @@ export async function executePayoutTransfer(
   payoutId: string,
   approverId: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  const actor = await getCurrentProfile().catch(() => null);
+  if (!actor || !isAdminRole(actor.role)) {
+    return { ok: false, error: "Not authorized" };
+  }
+  if (actor.id !== approverId && actor.role !== "superadmin") {
+    return { ok: false, error: "Approver mismatch" };
+  }
   return executeTransfer(payoutId, approverId);
 }
 
@@ -1346,58 +1263,8 @@ export async function rejectPayout(
   return { ok: true };
 }
 
-export async function autoReleaseSweep(): Promise<{ released: number }> {
-  const db = getDb();
-  const now = new Date();
-  const candidates = await db
-    .select()
-    .from(transactions);
-  let count = 0;
-  for (const t of candidates) {
-    if (
-      t.state === "dispatched" &&
-      t.autoReleaseAt &&
-      t.autoReleaseAt <= now
-    ) {
-      try {
-        await db
-          .update(transactions)
-          .set({
-            state: "released",
-            deliveredAt: t.deliveredAt ?? now,
-            releasedAt: now,
-            updatedAt: now,
-          })
-          .where(eq(transactions.id, t.id));
-        await db.insert(transactionEvents).values({
-          transactionId: t.id,
-          fromState: "dispatched",
-          toState: "released",
-          note: "Auto-released after timer",
-        });
-        await audit({
-          action: "txn.auto_release",
-          targetType: "transaction",
-          targetId: t.id,
-          payload: { ref: t.ref },
-        });
-        await queueSellerPayout(t.id);
-        await sendSms({
-          to: t.sellerPhone,
-          body: SmsTemplates.autoReleasedSeller(t.ref),
-          ref: t.ref,
-          kind: "txn.auto_release",
-          targetType: "transaction",
-          targetId: t.id,
-        });
-        count += 1;
-      } catch {
-        // continue
-      }
-    }
-  }
-  return { released: count };
-}
+// autoReleaseSweep / reconcileSweep live in src/lib/txn/sweeps.ts
+// (not Server Actions — cron-only entry points).
 
 export async function cancelTransaction(
   ref: string,
@@ -1461,61 +1328,3 @@ export async function cancelTransaction(
   return { ok: true };
 }
 
-/**
- * Reconciliation sweep — for every transaction in awaiting_payment or
- * processing payout, ask the PSP what it thinks the real status is and
- * converge. Run hourly via cron.
- */
-export async function reconcileSweep(): Promise<{
-  paymentsReconciled: number;
-  payoutsReconciled: number;
-}> {
-  const db = getDb();
-  const psp = getPsp();
-  let paymentsReconciled = 0;
-  let payoutsReconciled = 0;
-
-  const pendingTxns = await db
-    .select()
-    .from(transactions)
-    .where(eq(transactions.state, "awaiting_payment"));
-
-  for (const t of pendingTxns) {
-    try {
-      const v = await psp.verifyCharge(t.ref);
-      if (v.status === "succeeded") {
-        await markPaid(t.ref);
-        paymentsReconciled += 1;
-      }
-    } catch {
-      // continue
-    }
-  }
-
-  // For stuck payouts we rely on Moolre's webhook-driven settlement. The sweep
-  // only flips them to "completed" once the webhook has already written paid.
-  const stuckPayouts = await db
-    .select()
-    .from(payouts)
-    .where(eq(payouts.state, "paid"));
-  for (const p of stuckPayouts) {
-    try {
-      const [txn] = await db
-        .select()
-        .from(transactions)
-        .where(eq(transactions.id, p.transactionId))
-        .limit(1);
-      if (txn && txn.state !== "completed") {
-        await db
-          .update(transactions)
-          .set({ state: "completed", completedAt: new Date(), updatedAt: new Date() })
-          .where(eq(transactions.id, p.transactionId));
-        payoutsReconciled += 1;
-      }
-    } catch {
-      // continue
-    }
-  }
-
-  return { paymentsReconciled, payoutsReconciled };
-}

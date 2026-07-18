@@ -39,6 +39,10 @@ export default async function TxnDetailPage({
   const user = await getSessionUser();
   const role: "buyer" | "seller" | "guest" =
     user?.id === txn.buyerId ? "buyer" : user?.id === txn.sellerId ? "seller" : "guest";
+  // Logged-in strangers with a ref must not see phones/addresses.
+  if (user && role === "guest") {
+    notFound();
+  }
 
   const events = await db
     .select()

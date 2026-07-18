@@ -35,8 +35,17 @@ export async function POST(req: Request) {
   const webhookTimestamp = h.get("webhook-timestamp") ?? "";
   const webhookSignature = h.get("webhook-signature") ?? "";
   const secret = env.SUPABASE_AUTH_HOOK_SECRET;
+  const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
 
-  if (secret) {
+  // Fail closed in production — an unsigned SMS hook is an open OTP spam relay.
+  if (!secret) {
+    if (isProd) {
+      return NextResponse.json(
+        { error: "SUPABASE_AUTH_HOOK_SECRET is not configured" },
+        { status: 503 },
+      );
+    }
+  } else {
     if (!webhookId || !webhookTimestamp || !webhookSignature) {
       return NextResponse.json(
         { error: "Missing webhook signature headers" },

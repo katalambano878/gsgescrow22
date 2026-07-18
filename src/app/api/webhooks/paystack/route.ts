@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { paystack } from "@/lib/payments/paystack";
-import { markPaid } from "@/lib/actions/transaction";
+import { markPaidCore } from "@/lib/txn/mark-paid";
 import { getDb } from "@/lib/db/client";
 import { webhooksLog } from "@/lib/db/schema";
 import { isDbLive, isPaystackLive } from "@/lib/env";
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
   if (event === "charge.success") {
     const reference = (data as { reference?: string }).reference;
     if (reference && isDbLive) {
-      const r = await markPaid(reference);
+      const r = await markPaidCore(reference);
       if (!r.ok) {
         return NextResponse.json({ ok: false, error: r.error }, { status: 500 });
       }

@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -74,7 +75,8 @@ export function generateRef(prefix = "SB"): string {
 }
 
 export function generateDeliveryCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  // Cryptographically strong 6-digit code (100000–999999).
+  return String(randomInt(100000, 1000000));
 }
 
 export function relativeTime(date: Date | string | number): string {

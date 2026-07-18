@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isDbLive } from "@/lib/env";
-import { reconcileSweep } from "@/lib/actions/transaction";
+import { reconcileSweep } from "@/lib/txn/sweeps";
 import { assertCronAuthorized } from "@/lib/cron/auth";
 
 export const runtime = "nodejs";
