@@ -54,6 +54,13 @@ export const metadata: Metadata = {
     "SBBS holds the buyer's money safely until the goods arrive as promised. The trusted middleman for Instagram, WhatsApp, TikTok and informal commerce in Ghana.",
   metadataBase: new URL(SITE_URL),
   applicationName: "Sell-Safe Buy-Safe",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/icon", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
+  },
   keywords: [
     "safe payments",
     "Ghana",
