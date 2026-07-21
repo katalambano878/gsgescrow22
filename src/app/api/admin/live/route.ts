@@ -1,120 +1,99 @@
-import { desc, sql } from "drizzle-orm";
-import { getDb } from "@/lib/db/client";
-import { alerts, payouts, transactions } from "@/lib/db/schema";
-import { isDbLive } from "@/lib/env";
+import { NextResponse } from "next/server";
+import { desc, gt } from "drizzle-orm";
 import { getCurrentProfile, isAdminRole } from "@/lib/auth/session";
-import { isFeatureEnabled } from "@/lib/settings";
+import { getDb } from "@/lib/db/client";
+import { alerts, payouts, transactionEvents, transactions } from "@/lib/db/schema";
+import { isDbLive } from "@/lib/env";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const profile = await getCurrentProfile();
-  if (!profile || !isAdminRole(profile.role)) {
-    return new Response("Not authorized", { status: 403 });
-  }
-  if (!(await isFeatureEnabled("sse_dashboard"))) {
-    return new Response("Disabled", { status: 403 });
-  }
+/**
+ * Lightweight admin poll endpoint replacing Supabase Realtime.
+ * Returns recent rows as pseudo-events for the live ticker.
+ */
+export async function GET(req: Request) {
   if (!isDbLive) {
-    return new Response("DB not configured", { status: 503 });
+    return NextResponse.json({ ok: false, error: "DB not configured" }, { status: 503 });
+  }
+  const profile = await getCurrentProfile();
+  if (!profile || (!isAdminRole(profile.role) && profile.role !== "approver")) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (data: unknown) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-      };
+  const url = new URL(req.url);
+  const sinceRaw = url.searchParams.get("since");
+  const since = sinceRaw ? new Date(sinceRaw) : new Date(Date.now() - 60_000);
+  const sinceOk = !Number.isNaN(since.getTime()) ? since : new Date(Date.now() - 60_000);
 
-      let cursor = new Date();
-      // initial snapshot
-      send({ type: "hello", at: new Date().toISOString() });
-      send(await snapshot());
-
-      const id = setInterval(async () => {
-        try {
-          const since = cursor;
-          cursor = new Date();
-          const db = getDb();
-          const newTxns = await db
-            .select({
-              id: transactions.id,
-              ref: transactions.ref,
-              state: transactions.state,
-              item: transactions.itemDescription,
-              total: transactions.totalCharged,
-              at: transactions.createdAt,
-            })
-            .from(transactions)
-            .where(sql`${transactions.updatedAt} > ${since}`)
-            .orderBy(desc(transactions.updatedAt))
-            .limit(10);
-          const newAlerts = await db
-            .select()
-            .from(alerts)
-            .where(sql`${alerts.createdAt} > ${since}`)
-            .orderBy(desc(alerts.createdAt))
-            .limit(10);
-
-          if (newTxns.length) send({ type: "transactions", rows: newTxns });
-          if (newAlerts.length) send({ type: "alerts", rows: newAlerts });
-          send(await snapshot());
-        } catch (err) {
-          send({ type: "error", message: (err as Error).message });
-        }
-      }, 5000);
-
-      const keepalive = setInterval(() => {
-        try {
-          controller.enqueue(encoder.encode(":keepalive\n\n"));
-        } catch {
-          // stream closed
-        }
-      }, 25000);
-
-      const abort = () => {
-        clearInterval(id);
-        clearInterval(keepalive);
-        try {
-          controller.close();
-        } catch {
-          // ignore
-        }
-      };
-      // close on client disconnect
-      controller.error = abort as typeof controller.error;
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    },
-  });
-}
-
-async function snapshot() {
   const db = getDb();
-  const [t] = await db
-    .select({
-      active: sql<number>`count(*) filter (where ${transactions.state} in ('paid','dispatched','delivered','released','payout_pending','payout_approved'))::int`,
-      disputed: sql<number>`count(*) filter (where ${transactions.state} = 'disputed')::int`,
-      gmv: sql<number>`coalesce(sum(${transactions.totalCharged}) filter (where ${transactions.state} in ('paid','dispatched','delivered','released','payout_pending','payout_approved','completed')), 0)::bigint`,
-    })
-    .from(transactions);
-  const [p] = await db
-    .select({ pending: sql<number>`count(*) filter (where ${payouts.state} = 'pending_approval')::int` })
-    .from(payouts);
-  return {
-    type: "snapshot",
-    at: new Date().toISOString(),
-    active: Number(t?.active ?? 0),
-    disputed: Number(t?.disputed ?? 0),
-    gmv: Number(t?.gmv ?? 0),
-    pendingPayouts: Number(p?.pending ?? 0),
-  };
+  const events: Array<{
+    table: string;
+    eventType: "INSERT" | "UPDATE";
+    row: Record<string, unknown>;
+    receivedAt: string;
+  }> = [];
+
+  const [txnRows, payoutRows, alertRows, evtRows] = await Promise.all([
+    db
+      .select()
+      .from(transactions)
+      .where(gt(transactions.updatedAt, sinceOk))
+      .orderBy(desc(transactions.updatedAt))
+      .limit(20),
+    db
+      .select()
+      .from(payouts)
+      .where(gt(payouts.updatedAt, sinceOk))
+      .orderBy(desc(payouts.updatedAt))
+      .limit(20),
+    db
+      .select()
+      .from(alerts)
+      .where(gt(alerts.createdAt, sinceOk))
+      .orderBy(desc(alerts.createdAt))
+      .limit(20),
+    db
+      .select()
+      .from(transactionEvents)
+      .where(gt(transactionEvents.createdAt, sinceOk))
+      .orderBy(desc(transactionEvents.createdAt))
+      .limit(20),
+  ]);
+
+  for (const row of txnRows) {
+    events.push({
+      table: "transactions",
+      eventType: "UPDATE",
+      row: row as unknown as Record<string, unknown>,
+      receivedAt: row.updatedAt.toISOString(),
+    });
+  }
+  for (const row of payoutRows) {
+    events.push({
+      table: "payouts",
+      eventType: "UPDATE",
+      row: row as unknown as Record<string, unknown>,
+      receivedAt: row.updatedAt.toISOString(),
+    });
+  }
+  for (const row of alertRows) {
+    events.push({
+      table: "alerts",
+      eventType: "INSERT",
+      row: row as unknown as Record<string, unknown>,
+      receivedAt: row.createdAt.toISOString(),
+    });
+  }
+  for (const row of evtRows) {
+    events.push({
+      table: "transaction_events",
+      eventType: "INSERT",
+      row: row as unknown as Record<string, unknown>,
+      receivedAt: row.createdAt.toISOString(),
+    });
+  }
+
+  events.sort((a, b) => (a.receivedAt < b.receivedAt ? 1 : -1));
+
+  return NextResponse.json({ ok: true, events: events.slice(0, 40) });
 }

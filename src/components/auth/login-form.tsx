@@ -4,12 +4,18 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
-import { getSupabaseBrowser } from "@/lib/auth/supabase-browser";
 import { normalizeGhPhone } from "@/lib/utils";
 import { Mail, KeyRound, Phone, Lock, User } from "lucide-react";
 import { postLoginRedirect } from "@/lib/actions/post-login";
-import { ensureProfile } from "@/lib/actions/ensure-profile";
 import { claimPendingSellerOrders } from "@/lib/actions/claim-orders";
+import {
+  requestPhoneOtp,
+  verifyPhoneOtp,
+  requestEmailOtp,
+  verifyEmailOtp,
+  signInWithPassword,
+  signUpWithPassword,
+} from "@/lib/actions/auth";
 
 type Mode = "phone" | "password" | "email";
 
@@ -17,9 +23,7 @@ type Mode = "phone" | "password" | "email";
  * Unified login / signup form.
  *
  *   - `mode="login"` (default): phone OTP, email+password sign-in, email OTP fallback.
- *   - `mode="signup"`: phone OTP (creates user), email+password sign-up (creates user),
- *     email OTP (creates user on first verify). Display-name capture is optional but
- *     stored on the profile on next server render.
+ *   - `mode="signup"`: phone OTP (creates user), email+password sign-up, email OTP.
  */
 export function LoginForm({
   next,
@@ -51,8 +55,6 @@ export function LoginForm({
   }
 
   async function finishAndRedirect() {
-    // If the user arrived via a claim link, attach the order(s) BEFORE
-    // redirecting so the Hub they land on already has the row.
     if (claimToken) {
       try {
         const res = await claimPendingSellerOrders({ token: claimToken });
@@ -64,44 +66,35 @@ export function LoginForm({
           );
         }
       } catch {
-        // Best-effort. ensureProfile also runs a sweep, so nothing's lost.
+        // Best-effort
       }
     }
-    // Prefer going straight to the claimed transaction if we have one.
     if (claimToken) {
       try {
         const payload = JSON.parse(
-          atob(claimToken.split(".")[0].replace(/-/g, "+").replace(/_/g, "/") + "=="),
+          atob(claimToken.split(".")[0]!.replace(/-/g, "+").replace(/_/g, "/") + "=="),
         ) as { ref?: string };
         if (payload.ref) {
           window.location.assign(`/hub/transactions/${payload.ref}`);
           return;
         }
       } catch {
-        // fall through to default redirect
+        // fall through
       }
     }
     window.location.assign(await postLoginRedirect(next));
   }
 
-  function requireSb() {
+  function requireAuth() {
     if (!authLive) {
-      toast.error(
-        "Supabase env vars missing — check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY",
-      );
-      return null;
+      toast.error("Auth is not configured — set AUTH_SECRET (32+ chars) in the environment");
+      return false;
     }
-    const sb = getSupabaseBrowser();
-    if (!sb) {
-      toast.error("Supabase client failed to initialise — check browser console");
-      return null;
-    }
-    return sb;
+    return true;
   }
 
   async function handlePhoneStart() {
-    const sb = requireSb();
-    if (!sb) return;
+    if (!requireAuth()) return;
     const norm = normalizeGhPhone(phone);
     if (!norm) {
       toast.error("Enter a valid Ghana phone (024xxxxxxx or +233…)");
@@ -109,14 +102,12 @@ export function LoginForm({
     }
     setBusy(true);
     try {
-      const { error } = await sb.auth.signInWithOtp({
+      const res = await requestPhoneOtp({
         phone: norm,
-        options: {
-          shouldCreateUser: true,
-          data: displayName ? { display_name: displayName } : undefined,
-        },
+        displayName: displayName || undefined,
+        intent,
       });
-      if (error) throw error;
+      if (!res.ok) throw new Error(res.error);
       setNormalisedPhone(norm);
       toast.success("Code sent — check your SMS");
       setStep("code");
@@ -128,26 +119,19 @@ export function LoginForm({
   }
 
   async function handlePhoneVerify() {
-    const sb = requireSb();
-    if (!sb) return;
+    if (!requireAuth()) return;
     if (code.length < 6) {
       toast.error("Enter the 6-digit code from your SMS");
       return;
     }
     setBusy(true);
     try {
-      const { error } = await sb.auth.verifyOtp({
+      const res = await verifyPhoneOtp({
         phone: normalisedPhone,
-        token: code,
-        type: "sms",
+        code,
+        displayName: displayName || undefined,
       });
-      if (error) throw error;
-      // Backfill profile.display_name on first login if we have one.
-      if (displayName) {
-        await ensureProfile({ displayName }).catch(() => {});
-      } else {
-        await ensureProfile({}).catch(() => {});
-      }
+      if (!res.ok) throw new Error(res.error);
       toast.success(isSignup ? "Welcome to SBBS" : "Signed in");
       await finishAndRedirect();
     } catch (err) {
@@ -158,22 +142,19 @@ export function LoginForm({
   }
 
   async function handleEmailStart() {
-    const sb = requireSb();
-    if (!sb) return;
+    if (!requireAuth()) return;
     if (!email) {
       toast.error("Enter your email");
       return;
     }
     setBusy(true);
     try {
-      const { error } = await sb.auth.signInWithOtp({
+      const res = await requestEmailOtp({
         email,
-        options: {
-          shouldCreateUser: true,
-          data: displayName ? { display_name: displayName } : undefined,
-        },
+        displayName: displayName || undefined,
+        intent,
       });
-      if (error) throw error;
+      if (!res.ok) throw new Error(res.error);
       toast.success("Check your email for a 6-digit code");
       setStep("code");
     } catch (err) {
@@ -184,13 +165,15 @@ export function LoginForm({
   }
 
   async function handleEmailVerify() {
-    const sb = requireSb();
-    if (!sb) return;
+    if (!requireAuth()) return;
     setBusy(true);
     try {
-      const { error } = await sb.auth.verifyOtp({ email, token: code, type: "email" });
-      if (error) throw error;
-      await ensureProfile({ displayName: displayName || undefined }).catch(() => {});
+      const res = await verifyEmailOtp({
+        email,
+        code,
+        displayName: displayName || undefined,
+      });
+      if (!res.ok) throw new Error(res.error);
       toast.success(isSignup ? "Welcome to SBBS" : "Signed in");
       await finishAndRedirect();
     } catch (err) {
@@ -201,8 +184,7 @@ export function LoginForm({
   }
 
   async function handlePasswordSubmit() {
-    const sb = requireSb();
-    if (!sb) return;
+    if (!requireAuth()) return;
     if (!email || !password) {
       toast.error("Enter email and password");
       return;
@@ -213,33 +195,16 @@ export function LoginForm({
     }
     setBusy(true);
     try {
-      if (isSignup) {
-        const { data, error } = await sb.auth.signUp({
-          email,
-          password,
-          options: {
-            data: displayName ? { display_name: displayName } : undefined,
-          },
-        });
-        if (error) throw error;
-        // If email confirmation is disabled the user is signed in immediately.
-        // Otherwise tell them to check their email.
-        if (data.session) {
-          await ensureProfile({ displayName: displayName || undefined }).catch(() => {});
-          toast.success("Account created");
-          await finishAndRedirect();
-        } else {
-          toast.success(
-            "Check your email — confirm it to finish signing up, then come back here to log in.",
-          );
-        }
-      } else {
-        const { error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        await ensureProfile({}).catch(() => {});
-        toast.success("Signed in");
-        await finishAndRedirect();
-      }
+      const res = isSignup
+        ? await signUpWithPassword({
+            email,
+            password,
+            displayName: displayName || undefined,
+          })
+        : await signInWithPassword({ email, password });
+      if (!res.ok) throw new Error(res.error);
+      toast.success(isSignup ? "Account created" : "Signed in");
+      await finishAndRedirect();
     } catch (err) {
       toast.error((err as Error).message ?? "Invalid credentials");
     } finally {
@@ -305,160 +270,93 @@ export function LoginForm({
             id="phone"
             type="tel"
             inputMode="tel"
-            placeholder="024 000 0000"
+            placeholder="024xxxxxxx"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                onPrimaryClick();
-              }
-            }}
             leading={<Phone size={14} />}
-            autoFocus={!isSignup}
           />
-          <p className="text-[11px] text-[var(--muted)] mt-1">
-            We&rsquo;ll text you a 6-digit code. Ghana numbers only for now.
-          </p>
         </div>
       )}
 
-      {step === "enter" && tab === "email" && (
+      {step === "enter" && (tab === "password" || tab === "email") && (
         <div>
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
             type="email"
+            autoComplete="email"
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                onPrimaryClick();
-              }
-            }}
             leading={<Mail size={14} />}
-            autoFocus={!isSignup}
           />
         </div>
       )}
 
       {step === "enter" && tab === "password" && (
-        <>
-          <div>
-            <Label htmlFor="pw-email">Email</Label>
-            <Input
-              id="pw-email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              leading={<Mail size={14} />}
-              autoFocus={!isSignup}
-            />
-          </div>
-          <div>
-            <Label htmlFor="pw">
-              Password {isSignup && <span className="text-[var(--muted)] font-normal">(8+ characters)</span>}
-            </Label>
-            <Input
-              id="pw"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  onPrimaryClick();
-                }
-              }}
-              leading={<Lock size={14} />}
-            />
-          </div>
-        </>
+        <div>
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete={isSignup ? "new-password" : "current-password"}
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            leading={<Lock size={14} />}
+          />
+        </div>
       )}
 
       {step === "code" && (
-        <>
-          <div className="rounded-md bg-[var(--surface-muted)] text-sm text-[var(--muted)] p-3">
-            We sent a 6-digit code to{" "}
-            <span className="font-medium text-[var(--foreground)]">
-              {tab === "phone" ? normalisedPhone : email}
-            </span>
-          </div>
-          <div>
-            <Label htmlFor="code">6-digit code</Label>
-            <Input
-              id="code"
-              inputMode="numeric"
-              placeholder="123456"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  onPrimaryClick();
-                }
-              }}
-              leading={<KeyRound size={14} />}
-              autoFocus
-              className="font-mono tracking-[0.4em] text-center"
-            />
-          </div>
-        </>
+        <div>
+          <Label htmlFor="code">Verification code</Label>
+          <Input
+            id="code"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="6-digit code"
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            leading={<KeyRound size={14} />}
+          />
+          <button
+            type="button"
+            className="mt-2 text-xs text-[var(--muted)] underline"
+            onClick={resetCode}
+          >
+            Use a different {tab === "phone" ? "number" : "email"}
+          </button>
+        </div>
       )}
 
-      <Button
-        type="button"
-        className="w-full"
-        loading={busy}
-        onClick={(e) => {
-          e.preventDefault();
-          onPrimaryClick();
-        }}
-      >
-        {primaryCta}
+      <Button type="button" className="w-full" disabled={busy} onClick={onPrimaryClick}>
+        {busy ? "Please wait…" : primaryCta}
       </Button>
-
-      {step === "code" && (
-        <button
-          type="button"
-          className="block w-full text-center text-xs text-[var(--muted)] hover:text-[var(--foreground)]"
-          onClick={resetCode}
-        >
-          Use a different {tab === "phone" ? "number" : "email"}
-        </button>
-      )}
-
-      {!authLive && (
-        <p className="text-center text-xs text-[var(--danger)]">
-          Auth isn&rsquo;t configured. Add Supabase env vars and restart.
-        </p>
-      )}
     </div>
   );
 }
 
 function TabButton({
   active,
-  children,
   onClick,
+  children,
 }: {
   active: boolean;
-  children: React.ReactNode;
   onClick: () => void;
+  children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={
-        "flex-1 inline-flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition-colors " +
-        (active
-          ? "bg-[var(--surface)] text-[var(--foreground)] shadow-[0_1px_0_#00000010]"
-          : "text-[var(--muted)] hover:text-[var(--foreground)]")
-      }
+      className={[
+        "flex flex-1 items-center justify-center gap-1 rounded-full px-2 py-1.5 transition",
+        active
+          ? "bg-[var(--surface)] text-[var(--ink)] shadow-sm"
+          : "text-[var(--muted)] hover:text-[var(--ink)]",
+      ].join(" ")}
     >
       {children}
     </button>

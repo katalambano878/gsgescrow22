@@ -8,9 +8,7 @@ import { env } from "@/lib/env";
  * entered, so even if the seller signs up with a slightly different
  * account we can still match one of them (email / phone / handle).
  *
- * The secret is derived from SUPABASE_SERVICE_ROLE_KEY so no new env
- * var is required — that key is always present in server-only contexts
- * and never exposed to the browser.
+ * The secret is derived from AUTH_SECRET (or CRON_SECRET as fallback).
  */
 
 export interface ClaimPayload {
@@ -28,14 +26,33 @@ export interface ClaimPayload {
   exp: number;
 }
 
-function getSecret(): string {
-  const s = env.SUPABASE_SERVICE_ROLE_KEY || env.CRON_SECRET || env.NEXT_PUBLIC_APP_URL;
-  if (!s || s.length < 16) {
-    // Dev-only fallback — prints loudly so it's never mistaken for prod.
-    console.warn("[claim] No claim signing secret configured — using weak fallback");
-    return "sbbs-claim-fallback-secret-do-not-ship";
+function isProdRuntime(): boolean {
+  return process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+}
+
+/** Returns a signing secret, or null when none is safely available. */
+function tryGetSecret(): string | null {
+  const s = env.AUTH_SECRET || env.CRON_SECRET;
+  if (s && s.length >= 16) return s;
+  if (isProdRuntime()) return null;
+  // Dev-only fallback — prints loudly so it's never mistaken for prod.
+  console.warn("[claim] No claim signing secret configured — using weak fallback");
+  return "sbbs-claim-fallback-secret-do-not-ship";
+}
+
+function requireSecret(): string {
+  const s = tryGetSecret();
+  if (!s) {
+    throw new Error(
+      "Claim tokens require AUTH_SECRET (or CRON_SECRET) in production",
+    );
   }
   return s;
+}
+
+/** Call before creating a txn that may need an unregistered-seller claim link. */
+export function claimSigningReady(): boolean {
+  return tryGetSecret() !== null;
 }
 
 function b64url(buf: Buffer): string {
@@ -53,17 +70,19 @@ export function signClaim(payload: Omit<ClaimPayload, "exp"> & { ttlMs?: number 
   const full: ClaimPayload = { ...rest, exp: Date.now() + ttlMs };
   const body = b64url(Buffer.from(JSON.stringify(full), "utf8"));
   const sig = b64url(
-    crypto.createHmac("sha256", getSecret()).update(body).digest(),
+    crypto.createHmac("sha256", requireSecret()).update(body).digest(),
   );
   return `${body}.${sig}`;
 }
 
 export function verifyClaim(token: string): ClaimPayload | null {
   if (!token || typeof token !== "string" || !token.includes(".")) return null;
+  const secret = tryGetSecret();
+  if (!secret) return null;
   const [body, sig] = token.split(".");
   if (!body || !sig) return null;
   const expected = b64url(
-    crypto.createHmac("sha256", getSecret()).update(body).digest(),
+    crypto.createHmac("sha256", secret).update(body).digest(),
   );
   // Timing-safe compare.
   if (sig.length !== expected.length) return null;

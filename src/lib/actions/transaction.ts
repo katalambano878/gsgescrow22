@@ -45,7 +45,7 @@ import {
   sendEmail,
 } from "@/lib/email";
 import { resolveSeller } from "@/lib/auth/resolve-seller";
-import { signClaim } from "@/lib/auth/claim-tokens";
+import { claimSigningReady, signClaim } from "@/lib/auth/claim-tokens";
 import { getSettings } from "@/lib/settings";
 import { evaluateSellerPayoutRisk, recordFlags } from "@/lib/fraud/rules";
 import { idempotent } from "@/lib/idempotency";
@@ -134,6 +134,14 @@ export async function createTransaction(
     sellerReleaseBank: settings.seller_release_bank_pesewas,
   });
 
+  if (fees.sellerPayoutClamped || fees.sellerPayout <= 0) {
+    return {
+      ok: false,
+      error:
+        "Order is too small after platform and release fees. Increase the product amount.",
+    };
+  }
+
   const profile = await getCurrentProfile().catch(() => null);
   const idemKey = data.idempotencyKey
     ? `txn:create:${data.idempotencyKey}`
@@ -170,6 +178,15 @@ export async function createTransaction(
       sellerMatchedBy = resolved.matchedBy;
       canonicalSellerEmail = resolved.email;
       canonicalSellerHandle = resolved.handle;
+    }
+
+    // Unregistered sellers need a signed claim link — fail before insert
+    // when we cannot sign (avoids orphaning a row with no claim SMS).
+    if (data.initiatedBy === "buyer" && !resolvedSellerId && !claimSigningReady()) {
+      return {
+        ok: false as const,
+        error: "Server is misconfigured for seller claim links. Contact support.",
+      };
     }
 
     const [txn] = await db

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSupabaseBrowser } from "@/lib/auth/supabase-browser";
 
 export interface RealtimeEvent {
   table: string;
@@ -11,14 +10,20 @@ export interface RealtimeEvent {
   receivedAt: string;
 }
 
+type PollPayload = {
+  ok: boolean;
+  events?: Array<{
+    table: string;
+    eventType: "INSERT" | "UPDATE" | "DELETE";
+    row: Record<string, unknown>;
+    receivedAt: string;
+  }>;
+};
+
 /**
- * Subscribes to Supabase Realtime for the tables the admin dashboard cares
- * about. Returns the latest event + a rolling buffer so the UI can animate
- * deltas without refetching. Falls back to null when the Supabase browser
- * client isn't configured.
- *
- * RLS + the "admin all" policies ensure subscribers only receive rows they
- * are allowed to read \u2014 no cross-tenant leaks.
+ * Polls `/api/admin/live` for recent admin activity. Replaces Supabase
+ * Realtime `postgres_changes` with a visibility-aware 3.5s poll so the
+ * live ticker keeps working on plain Postgres.
  */
 export function useAdminRealtime(opts: {
   tables?: Array<"transactions" | "payouts" | "alerts" | "transaction_events" | "listings" | "sms_log">;
@@ -35,38 +40,50 @@ export function useAdminRealtime(opts: {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    const sb = getSupabaseBrowser();
-    if (!sb) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let lastSeen = "";
 
-    const channel = sb.channel("admin-live");
-    for (const table of tables) {
-      (channel as unknown as { on: (...args: unknown[]) => typeof channel }).on(
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        (payload: {
-          eventType: "INSERT" | "UPDATE" | "DELETE";
-          new: Record<string, unknown>;
-          old: Record<string, unknown>;
-        }) => {
-          const evt: RealtimeEvent = {
-            table,
-            eventType: payload.eventType,
-            row: payload.new ?? payload.old ?? {},
-            oldRow: payload.old,
-            receivedAt: new Date().toISOString(),
-          };
-          setEvents((prev) => [evt, ...prev].slice(0, bufferSize));
-        },
-      );
+    async function tick() {
+      if (cancelled) return;
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        timer = setTimeout(tick, 3500);
+        return;
+      }
+      try {
+        const qs = new URLSearchParams({
+          tables: tables.join(","),
+          since: lastSeen,
+        });
+        const res = await fetch(`/api/admin/live?${qs.toString()}`, {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          setConnected(false);
+        } else {
+          const data = (await res.json()) as PollPayload;
+          setConnected(Boolean(data.ok));
+          if (data.events?.length) {
+            setEvents((prev) => {
+              const next = [...data.events!, ...prev].slice(0, bufferSize);
+              return next;
+            });
+            lastSeen = data.events[0]!.receivedAt;
+          }
+        }
+      } catch {
+        setConnected(false);
+      }
+      if (!cancelled) timer = setTimeout(tick, 3500);
     }
-    channel.subscribe((status: string) => {
-      setConnected(status === "SUBSCRIBED");
-    });
 
+    tick();
     return () => {
-      sb.removeChannel(channel);
+      cancelled = true;
+      if (timer) clearTimeout(timer);
     };
-  }, [JSON.stringify(tables), bufferSize]);
+  }, [tables.join(","), bufferSize]);
 
   return { events, connected };
 }

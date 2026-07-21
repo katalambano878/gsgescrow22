@@ -62,7 +62,7 @@ export default async function SellPage() {
               </div>
               {!isAuthLive && (
                 <p className="mt-4 text-xs text-[var(--danger)]">
-                  Auth isn&rsquo;t configured. Add Supabase env vars to enable
+                  Auth isn&rsquo;t configured. Set AUTH_SECRET to enable
                   sign-up.
                 </p>
               )}

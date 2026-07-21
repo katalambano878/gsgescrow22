@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input, Label, Textarea, FieldHint } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { calculateFees, DEFAULT_FEE_RATES } from "@/lib/payments";
+import { calculateFees, DEFAULT_FEE_RATES } from "@/lib/payments/fees";
 import { formatGhs, ghsToPesewas } from "@/lib/utils";
 import { createTransaction } from "@/lib/actions/transaction";
 

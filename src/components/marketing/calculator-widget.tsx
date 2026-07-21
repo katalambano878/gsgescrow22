@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { calculateFees, DEFAULT_FEE_RATES, type PayoutChannel } from "@/lib/payments";
+import { calculateFees, DEFAULT_FEE_RATES, type PayoutChannel } from "@/lib/payments/fees";
 import { formatGhs, ghsToPesewas } from "@/lib/utils";
 
 export function CalculatorWidget() {

@@ -36,6 +36,9 @@ yarn-error.log*
 # …but .env.example IS a safe template that SHOULD be committed:
 !.env.example
 
+# local disk storage (dev)
+.data/
+
 # vercel
 .vercel
 

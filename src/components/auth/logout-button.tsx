@@ -1,6 +1,6 @@
 "use client";
 
-import { getSupabaseBrowser } from "@/lib/auth/supabase-browser";
+import { logoutAction } from "@/lib/actions/auth";
 
 export function LogoutButton({ children }: { children: React.ReactNode }) {
   return (
@@ -9,8 +9,7 @@ export function LogoutButton({ children }: { children: React.ReactNode }) {
       className="block w-full text-left"
       onClick={async () => {
         try {
-          const sb = getSupabaseBrowser();
-          if (sb) await sb.auth.signOut();
+          await logoutAction();
         } finally {
           window.location.assign("/");
         }

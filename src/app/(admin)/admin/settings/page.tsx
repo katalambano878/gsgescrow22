@@ -11,12 +11,17 @@ export const metadata = { title: "Admin · Platform Settings" };
 const GROUPS: Array<{ title: string; keys: (keyof PlatformConfig)[]; description: string }> = [
   {
     title: "Economics",
-    description: "Platform fees, rider release fee, and seller release fee.",
+    description:
+      "Platform fees plus channel-aware release fees (MoMo % + cap, Bank flat).",
     keys: [
       "buyer_fee_bps",
       "seller_fee_bps",
-      "rider_release_fee_pesewas",
-      "seller_release_fee_pesewas",
+      "rider_release_momo_bps",
+      "rider_release_momo_cap_pesewas",
+      "rider_release_bank_pesewas",
+      "seller_release_momo_bps",
+      "seller_release_momo_cap_pesewas",
+      "seller_release_bank_pesewas",
     ],
   },
   {

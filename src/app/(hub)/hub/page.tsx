@@ -81,7 +81,7 @@ export default async function HubDashboardPage() {
             <Card className="p-5 border-[#ecdba8] bg-[#fbf2dd]">
               <p className="text-sm text-[#7a5410]">
                 Auth and database aren&rsquo;t configured. This is a preview of the Hub.
-                Set the Supabase env vars to enable real sign-in and persistence.
+                Set DATABASE_URL and AUTH_SECRET to enable real sign-in and persistence.
               </p>
             </Card>
           )}

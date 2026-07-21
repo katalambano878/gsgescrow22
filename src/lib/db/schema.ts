@@ -115,6 +115,11 @@ export const listingStateEnum = pgEnum("listing_state", [
 
 export const listingKindEnum = pgEnum("listing_kind", ["product", "service"]);
 
+export const authOtpPurposeEnum = pgEnum("auth_otp_purpose", [
+  "login",
+  "signup",
+]);
+
 export const profiles = pgTable(
   "profiles",
   {
@@ -139,6 +144,68 @@ export const profiles = pgTable(
   (t) => [
     index("profiles_role_idx").on(t.role),
     index("profiles_handle_idx").on(t.handle),
+  ],
+);
+
+/**
+ * First-party auth credentials (replaces Supabase GoTrue auth.users).
+ * `userId` matches `profiles.id` so all existing FKs stay valid after migration.
+ */
+export const authCredentials = pgTable(
+  "auth_credentials",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    email: text("email"),
+    phone: text("phone"),
+    passwordHash: text("password_hash"),
+    emailConfirmedAt: timestamp("email_confirmed_at", { withTimezone: true }),
+    phoneConfirmedAt: timestamp("phone_confirmed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("auth_credentials_email_uidx").on(t.email),
+    uniqueIndex("auth_credentials_phone_uidx").on(t.phone),
+  ],
+);
+
+export const authOtps = pgTable(
+  "auth_otps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    channel: text("channel").notNull(), // "phone" | "email"
+    destination: text("destination").notNull(),
+    purpose: authOtpPurposeEnum("purpose").notNull().default("login"),
+    codeHash: text("code_hash").notNull(),
+    displayName: text("display_name"),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("auth_otps_destination_idx").on(t.destination),
+    index("auth_otps_expires_idx").on(t.expiresAt),
+  ],
+);
+
+export const authSessions = pgTable(
+  "auth_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("auth_sessions_token_uidx").on(t.tokenHash),
+    index("auth_sessions_user_idx").on(t.userId),
   ],
 );
 

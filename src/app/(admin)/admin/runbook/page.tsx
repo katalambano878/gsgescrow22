@@ -74,7 +74,7 @@ export default async function RunbookPage() {
     {
       name: "Auth",
       ok: isAuthLive,
-      note: isAuthLive ? "Supabase Auth · phone OTP + password" : "Supabase env not set",
+      note: isAuthLive ? "First-party auth · phone OTP + password" : "AUTH_SECRET not set",
     },
     {
       name: "Payments",

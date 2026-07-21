@@ -14,10 +14,9 @@ const rawEnv = {
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
 
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-  SUPABASE_AUTH_HOOK_SECRET: process.env.SUPABASE_AUTH_HOOK_SECRET,
+  AUTH_SECRET: process.env.AUTH_SECRET,
+  STORAGE_ROOT: process.env.STORAGE_ROOT,
+  STORAGE_SIGNING_SECRET: process.env.STORAGE_SIGNING_SECRET,
 
   DATABASE_URL: process.env.DATABASE_URL,
 
@@ -70,10 +69,9 @@ const schema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
   NEXT_PUBLIC_APP_NAME: z.string().default("Sell-Safe Buy-Safe"),
 
-  NEXT_PUBLIC_SUPABASE_URL: z.string().optional(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
-  SUPABASE_AUTH_HOOK_SECRET: z.string().optional(),
+  AUTH_SECRET: z.string().optional(),
+  STORAGE_ROOT: z.string().optional(),
+  STORAGE_SIGNING_SECRET: z.string().optional(),
 
   DATABASE_URL: z.string().optional(),
 
@@ -166,6 +164,8 @@ export const isHubtelSmsLive = Boolean(env.HUBTEL_CLIENT_ID && env.HUBTEL_CLIENT
 export const isSmsLive = isMoolreSmsLive || isHubtelSmsLive;
 export const isEmailLive = Boolean(env.RESEND_API_KEY);
 export const isDbLive = Boolean(env.DATABASE_URL);
-export const isAuthLive = Boolean(
-  env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+/** First-party cookie auth is live when AUTH_SECRET is strong enough. */
+export const isAuthLive = Boolean(env.AUTH_SECRET && env.AUTH_SECRET.length >= 32);
+export const isStorageLive = Boolean(
+  env.STORAGE_ROOT || process.env.NODE_ENV !== "production",
 );

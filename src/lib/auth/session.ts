@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import { getSupabaseServer } from "./supabase-server";
 import { getDb } from "../db/client";
 import { profiles } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { isAuthLive, isDbLive } from "../env";
 import type { Profile } from "../db/schema";
+import { getSessionClaims } from "./cookies";
 
 export type SessionUser = {
   id: string;
@@ -13,14 +13,12 @@ export type SessionUser = {
 };
 
 export async function getSessionUser(): Promise<SessionUser | null> {
-  const sb = await getSupabaseServer();
-  if (!sb) return null;
-  const { data } = await sb.auth.getUser();
-  if (!data.user) return null;
+  const claims = await getSessionClaims();
+  if (!claims) return null;
   return {
-    id: data.user.id,
-    email: data.user.email ?? null,
-    phone: data.user.phone ?? null,
+    id: claims.sub,
+    email: claims.email ?? null,
+    phone: claims.phone ?? null,
   };
 }
 
@@ -45,8 +43,6 @@ export async function requireUser(redirectTo = "/login"): Promise<SessionUser> {
 
 export async function requireProfile(redirectTo = "/login"): Promise<Profile> {
   const user = await requireUser(redirectTo);
-  // If the DB isn't wired up yet, redirect the gate instead of crashing the
-  // layout with a thrown error. The landing page explains what's missing.
   if (!isDbLive) {
     redirect(`${redirectTo}?reason=db-not-configured`);
   }
@@ -60,9 +56,6 @@ export async function requireProfile(redirectTo = "/login"): Promise<Profile> {
     if (!rows[0]) redirect(`${redirectTo}?reason=no-profile`);
     return rows[0];
   } catch (err) {
-    // Any transient DB failure (e.g. connection refused) also redirects —
-    // never crash the RSC tree. `redirect()` throws NEXT_REDIRECT internally;
-    // only swallow other errors here.
     const message = (err as { digest?: string; message?: string })?.digest ?? "";
     if (typeof message === "string" && message.startsWith("NEXT_REDIRECT")) {
       throw err;

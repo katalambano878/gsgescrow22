@@ -26,7 +26,7 @@ export default async function LoginPage({
       </p>
       {sp.reason === "auth-not-configured" && (
         <div className="mt-5 rounded-md border border-[#ecdba8] bg-[#fbf2dd] text-[#7a5410] text-sm p-3">
-          Auth is not configured yet. Plug in <code>NEXT_PUBLIC_SUPABASE_URL</code> and the keys to enable login.
+          Auth is not configured yet. Set <code>AUTH_SECRET</code> (32+ characters) to enable login.
         </div>
       )}
       {sp.reason === "forbidden" && (
