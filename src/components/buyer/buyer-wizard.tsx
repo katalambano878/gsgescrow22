@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { calculateFees, DEFAULT_FEE_RATES } from "@/lib/payments/fees";
 import { formatGhs, ghsToPesewas } from "@/lib/utils";
-import { createTransaction } from "@/lib/actions/transaction";
+import { createTransaction, initializeCheckoutPayment } from "@/lib/actions/transaction";
 
 type OrderType = "product" | "service";
 
@@ -140,8 +140,16 @@ export function BuyerWizard({
         toast.error(r.error);
         return;
       }
-      toast.success("Order created — opening secure checkout");
-      router.push(r.checkoutUrl);
+
+      // Skip the intermediate checkout page — go straight to MoMo (Moolre).
+      const pay = await initializeCheckoutPayment(r.ref, "momo");
+      if (!pay.ok) {
+        toast.error(pay.error);
+        router.push(r.checkoutUrl);
+        return;
+      }
+      toast.success("Opening Mobile Money…");
+      window.location.assign(pay.authorizationUrl);
     });
   }
 
@@ -422,7 +430,7 @@ export function BuyerWizard({
               </Button>
             ) : (
               <Button type="button" onClick={submit} loading={isPending}>
-                <ShieldCheck size={16} /> Pay {formatGhs(fees.totalCharged)} safely
+                <ShieldCheck size={16} /> Pay {formatGhs(fees.totalCharged)} with Mobile Money
               </Button>
             )}
           </div>
@@ -438,7 +446,7 @@ export function BuyerWizard({
           <ol className="mt-4 space-y-3 text-sm">
             <li className="flex gap-3">
               <span className="font-mono text-xs text-[var(--muted)]">01</span>
-              <span>You pay SBBS via Mobile Money or card.</span>
+              <span>You pay SBBS via Mobile Money (opens next).</span>
             </li>
             <li className="flex gap-3">
               <span className="font-mono text-xs text-[var(--muted)]">02</span>
