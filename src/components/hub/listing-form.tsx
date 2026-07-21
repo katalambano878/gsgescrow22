@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input, Label, Textarea, FieldHint } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { upsertListing, type UpsertListingInput } from "@/lib/actions/listings";
-import { publicListingUrl } from "@/lib/storage";
+import { publicListingUrl } from "@/lib/storage/shared";
 import { formatGhs, ghsToPesewas } from "@/lib/utils";
 
 const CATEGORIES = [

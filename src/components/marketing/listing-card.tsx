@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ShieldCheck, Sparkles, MapPin, BadgeCheck } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { formatGhs } from "@/lib/utils";
-import { publicListingUrl } from "@/lib/storage";
+import { publicListingUrl } from "@/lib/storage/shared";
 
 export interface ListingCardData {
   id: string;

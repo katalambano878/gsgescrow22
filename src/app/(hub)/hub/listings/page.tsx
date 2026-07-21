@@ -11,7 +11,7 @@ import { listings } from "@/lib/db/schema";
 import { isDbLive } from "@/lib/env";
 import { formatGhs, relativeTime } from "@/lib/utils";
 import { Plus, Sparkles, AlertTriangle } from "lucide-react";
-import { publicListingUrl } from "@/lib/storage";
+import { publicListingUrl } from "@/lib/storage/shared";
 import { ListingRowActions } from "@/components/hub/listing-row-actions";
 
 export const dynamic = "force-dynamic";

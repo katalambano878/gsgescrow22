@@ -10,7 +10,7 @@ import { getDb } from "@/lib/db/client";
 import { listings, profiles } from "@/lib/db/schema";
 import { isDbLive } from "@/lib/env";
 import { formatGhs, relativeTime } from "@/lib/utils";
-import { publicListingUrl } from "@/lib/storage";
+import { publicListingUrl } from "@/lib/storage/shared";
 import { trackListingView } from "@/lib/actions/listings";
 
 export const dynamic = "force-dynamic";

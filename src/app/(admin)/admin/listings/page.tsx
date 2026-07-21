@@ -8,7 +8,7 @@ import { getDb } from "@/lib/db/client";
 import { listings, profiles } from "@/lib/db/schema";
 import { isDbLive } from "@/lib/env";
 import { formatGhs, relativeTime } from "@/lib/utils";
-import { publicListingUrl } from "@/lib/storage";
+import { publicListingUrl } from "@/lib/storage/shared";
 import { ModerateActions } from "@/components/admin/moderate-actions";
 import { Sparkles } from "lucide-react";
 
