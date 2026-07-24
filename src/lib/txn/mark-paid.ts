@@ -10,7 +10,7 @@ import { transactions, payments, transactionEvents } from "@/lib/db/schema";
 import { audit } from "@/lib/audit/log";
 import { formatGhs, generateDeliveryCode } from "@/lib/utils";
 import { assertTransition, type TxnState } from "@/lib/state/transaction";
-import { sendSms, SmsTemplates } from "@/lib/sms";
+import { sendSms, SmsTemplates, smsHubTxnUrl } from "@/lib/sms";
 import { paymentReceivedEmail, sendEmail } from "@/lib/email";
 import { idempotent } from "@/lib/idempotency";
 
@@ -74,6 +74,7 @@ export async function markPaidCore(ref: string): Promise<{ ok: boolean; error?: 
         txn.sellerName.split(" ")[0],
         ref,
         formatGhs(txn.totalCharged),
+        smsHubTxnUrl(ref),
       ),
       ref,
       kind: "txn.paid",

@@ -34,7 +34,7 @@ import {
 } from "@/lib/utils";
 import { assertTransition, type TxnState } from "@/lib/state/transaction";
 import { getCurrentProfile, isAdminRole } from "@/lib/auth/session";
-import { sendSms, sendOpsAlert, SmsTemplates } from "@/lib/sms";
+import { sendSms, sendOpsAlert, SmsTemplates, smsHubTxnUrl } from "@/lib/sms";
 import {
   dispatchedEmail,
   paymentReceivedEmail,
@@ -275,7 +275,7 @@ export async function createTransaction(
       });
 
       const sellerIsRegistered = Boolean(resolvedSellerId);
-      const hubLink = `${env.NEXT_PUBLIC_APP_URL}/hub/transactions/${ref}`;
+      const hubLink = smsHubTxnUrl(ref);
 
       if (sellerIsRegistered) {
         await sendSms({
@@ -372,7 +372,7 @@ export async function createTransaction(
           data.sellerName.split(" ")[0],
           ref,
           formatGhs(fees.totalCharged),
-          `${env.NEXT_PUBLIC_APP_URL}/hub/transactions/${ref}`,
+          smsHubTxnUrl(ref),
         ),
         ref,
         kind: "txn.created",

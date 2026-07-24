@@ -156,34 +156,53 @@ export async function markSmsDelivered(providerMessageId: string): Promise<void>
   }
 }
 
+/** Absolute app URL for SMS deep-links (never use the legacy sbbs.gh placeholder). */
+export function smsUrl(path = ""): string {
+  const base = (env.NEXT_PUBLIC_APP_URL || "https://sellbuysafe.gsgbrands.com.gh").replace(
+    /\/$/,
+    "",
+  );
+  if (!path) return base;
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+/** Short Hub deal link — preferred in SMS to avoid truncation. */
+export function smsHubTxnUrl(ref: string): string {
+  return smsUrl(`/h/${encodeURIComponent(ref)}`);
+}
+
+/** Short public track link. */
+export function smsTrackUrl(ref: string): string {
+  return smsUrl(`/t/${encodeURIComponent(ref)}`);
+}
+
 /**
  * Full SMS template catalog. Every template takes the minimum fields, keeps
- * length under 160 chars where practical, and always ends with a short sbbs.gh
- * deep-link so the recipient can act.
+ * length under 160 chars where practical, and ends with a real APP_URL deep-link.
  */
 export const SmsTemplates = {
   // ---- Transactions ---------------------------------------------------
   orderCreatedSeller: (sellerFirst: string, ref: string, amount: string, link: string) =>
-    `${sellerFirst}, a buyer on SBBS has started a protected order for ${amount}. Reference ${ref}. We'll SMS you the moment they pay. ${link}`,
+    `${sellerFirst}, a buyer on SBBS started a protected order for ${amount} (${ref}). We'll SMS when they pay. ${link}`,
   /**
    * Sent to a seller who does NOT yet have an SBBS account. The link goes
    * to the signup page with a signed claim token so their new account
    * automatically inherits this (and any other pending) order.
    */
   orderCreatedSellerClaim: (sellerFirst: string, ref: string, amount: string, buyerName: string, signupLink: string) =>
-    `${sellerFirst || "Hi"}, ${buyerName} wants to buy from you safely on SBBS (${amount}, ref ${ref}). Create your free account to fulfil the order and get paid: ${signupLink}`,
+    `${sellerFirst || "Hi"}, ${buyerName} wants to buy from you safely on SBBS (${amount}, ${ref}). Create your free account to get paid: ${signupLink}`,
   orderCreatedBuyer: (buyerFirst: string, ref: string, amount: string, link: string) =>
-    `${buyerFirst}, your SBBS order ${ref} is ready for payment (${amount}). Pay here to protect it: ${link}`,
-  paymentReceived: (sellerFirst: string, ref: string, amount: string) =>
-    `${sellerFirst}, payment of ${amount} for order ${ref} is held safely by SBBS. You may now dispatch. sbbs.gh/hub`,
+    `${buyerFirst}, your SBBS order ${ref} is ready (${amount}). Pay here: ${link}`,
+  paymentReceived: (sellerFirst: string, ref: string, amount: string, link?: string) =>
+    `${sellerFirst}, payment of ${amount} for ${ref} is held by SBBS. Dispatch now: ${link ?? smsHubTxnUrl(ref)}`,
   paymentHeldBuyer: (buyerFirst: string, ref: string, amount: string) =>
     `${buyerFirst}, your ${amount} for ${ref} is held safely. The seller is notified. We'll SMS your delivery code on dispatch.`,
   dispatchedToBuyer: (ref: string, code: string) =>
-    `SBBS ${ref} dispatched. YOUR delivery code: ${code}. Share it with the rider ONLY after you have inspected your item — the rider needs it to complete the order. Do not share with anyone else. sbbs.gh/track/${ref}`,
+    `SBBS ${ref} dispatched. YOUR delivery code: ${code}. Share with the rider ONLY after inspecting. Do not share with anyone else. ${smsTrackUrl(ref)}`,
   dispatchedToSeller: (ref: string) =>
     `Dispatch marked for ${ref}. SBBS sent the 6-digit delivery code to the buyer (not to you). Your rider must collect it from the buyer at the door to release your payout.`,
   deliveredToBuyer: (ref: string) =>
-    `Your SBBS order ${ref} has been marked DELIVERED by the seller. Inspect, then confirm in your Hub to release the payout. sbbs.gh/hub`,
+    `Your SBBS order ${ref} was marked DELIVERED. Inspect, then confirm in Hub to release payout: ${smsHubTxnUrl(ref)}`,
   releasedToSeller: (ref: string) =>
     `Order ${ref} confirmed. SBBS payout is queued for approval. You'll be notified again when funds hit your MoMo.`,
   autoReleasedSeller: (ref: string) =>
@@ -191,49 +210,49 @@ export const SmsTemplates = {
   cancelledBuyer: (ref: string, reason: string) =>
     `Order ${ref} was cancelled: ${reason}. If you already paid, a refund will reach your original payment method within 3 business days.`,
   cancelledSeller: (ref: string, reason: string) =>
-    `Order ${ref} was cancelled: ${reason}. No payout will be issued for this deal. sbbs.gh/hub`,
+    `Order ${ref} was cancelled: ${reason}. No payout for this deal. ${smsHubTxnUrl(ref)}`,
   // ---- Payouts --------------------------------------------------------
   payoutSent: (ref: string, amount: string) =>
     `SBBS payout of ${amount} for order ${ref} has been sent to your MoMo. Thank you for selling safely.`,
   payoutFailed: (ref: string, amount: string, reason: string) =>
     `Payout of ${amount} for ${ref} failed: ${reason}. Our team is investigating — you don't need to take action.`,
   payoutRejected: (ref: string, reason: string) =>
-    `Your payout for ${ref} was rejected: ${reason}. Contact support at sbbs.gh/contact.`,
+    `Your payout for ${ref} was rejected: ${reason}. Contact support: ${smsUrl("/contact")}`,
   payoutTwoApproverWaiting: (ref: string, amount: string) =>
     `Your ${amount} payout for ${ref} has first approval and is waiting on a second SBBS approver. This is routine for high-value payouts.`,
   // ---- Disputes -------------------------------------------------------
   disputeOpened: (ref: string) =>
-    `A dispute has been opened on order ${ref}. The transaction is on hold pending review. sbbs.gh/hub`,
+    `A dispute was opened on ${ref}. Deal is on hold pending review. ${smsHubTxnUrl(ref)}`,
   disputeResolvedBuyer: (ref: string, outcome: string) =>
-    `Your dispute on ${ref} has been decided: ${outcome}. Full details in your Hub. sbbs.gh/hub`,
+    `Your dispute on ${ref} was decided: ${outcome}. Details: ${smsHubTxnUrl(ref)}`,
   disputeResolvedSeller: (ref: string, outcome: string) =>
-    `The dispute on ${ref} has been decided: ${outcome}. Full details in your Hub. sbbs.gh/hub`,
+    `Dispute on ${ref} decided: ${outcome}. Details: ${smsHubTxnUrl(ref)}`,
   refundIssued: (ref: string, amount: string) =>
     `A refund of ${amount} for order ${ref} has been issued and will reach your original payment method shortly.`,
   // ---- KYC ------------------------------------------------------------
   kycSubmitted: () =>
     `Your SBBS KYC documents have been received. Review usually takes 1-2 business days. We'll SMS you as soon as it's decided.`,
   kycApproved: () =>
-    `Your SBBS KYC is APPROVED. Your Trust Badge is live and the full payout cap is unlocked. Paste your badge in your Instagram bio at sbbs.gh/badge`,
+    `Your SBBS KYC is APPROVED. Trust Badge is live. Paste in your bio: ${smsUrl("/badge")}`,
   kycRejected: (reason: string) =>
-    `Your SBBS KYC needs more info: ${reason}. Update your documents at sbbs.gh/hub/profile and we'll re-review.`,
+    `Your SBBS KYC needs more info: ${reason}. Update docs: ${smsUrl("/hub/profile")}`,
   // ---- Listings -------------------------------------------------------
   listingApproved: (title: string) =>
-    `Your SBBS listing "${title}" is live in the marketplace. sbbs.gh/hub/listings`,
+    `Your SBBS listing "${title}" is live. ${smsUrl("/hub/listings")}`,
   listingSuspended: (title: string, reason: string) =>
-    `Your SBBS listing "${title}" was suspended: ${reason}. Contact support at sbbs.gh/contact.`,
+    `Your SBBS listing "${title}" was suspended: ${reason}. Support: ${smsUrl("/contact")}`,
   listingSold: (title: string, ref: string) =>
     `Your listing "${title}" just sold via SBBS. Order ${ref} is being held safely — we'll notify you to dispatch.`,
   // ---- Reviews --------------------------------------------------------
   reviewReceived: (stars: number, from: string) =>
-    `New ${stars}-star review from ${from} on SBBS. See it on your public profile. sbbs.gh/hub`,
+    `New ${stars}-star review from ${from} on SBBS. See it: ${smsUrl("/hub")}`,
   // ---- Account --------------------------------------------------------
   welcome: (firstName: string) =>
-    `Welcome to SBBS ${firstName}. Your Hub is live — any protected deal you do will appear there. sbbs.gh/hub`,
+    `Welcome to SBBS ${firstName}. Your Hub is live: ${smsUrl("/hub")}`,
   loginOtp: (code: string) =>
     `Your SBBS sign-in code is ${code}. Do not share it. Expires in 10 minutes.`,
   suspendedAccount: (reason: string) =>
-    `Your SBBS account has been suspended: ${reason}. Appeal at sbbs.gh/contact.`,
+    `Your SBBS account has been suspended: ${reason}. Appeal: ${smsUrl("/contact")}`,
   roleChanged: (role: string) =>
-    `Your SBBS account role is now "${role}". Open sbbs.gh/hub for the new capabilities.`,
+    `Your SBBS role is now "${role}". Open Hub: ${smsUrl("/hub")}`,
 } as const;
