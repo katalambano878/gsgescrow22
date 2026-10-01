@@ -50,6 +50,8 @@ const rawEnv = {
 
   CRON_SECRET: process.env.CRON_SECRET,
   RECON_REPORT_TO: process.env.RECON_REPORT_TO,
+  MAINTENANCE_MODE: process.env.MAINTENANCE_MODE,
+  MAINTENANCE_BYPASS_SECRET: process.env.MAINTENANCE_BYPASS_SECRET,
 
   PLATFORM_BUYER_FEE_BPS: process.env.PLATFORM_BUYER_FEE_BPS,
   PLATFORM_SELLER_FEE_BPS: process.env.PLATFORM_SELLER_FEE_BPS,
@@ -109,6 +111,11 @@ const schema = z.object({
     .optional()
     .transform((v) => (v && v.length > 0 ? v : undefined))
     .pipe(z.string().email().optional()),
+  MAINTENANCE_MODE: z
+    .string()
+    .optional()
+    .transform((v) => v === "true" || v === "1" || v === "yes" || v === "on"),
+  MAINTENANCE_BYPASS_SECRET: z.string().optional(),
 
   PLATFORM_BUYER_FEE_BPS: z.coerce.number().default(150),
   PLATFORM_SELLER_FEE_BPS: z.coerce.number().default(150),
