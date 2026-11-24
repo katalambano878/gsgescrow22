@@ -23,6 +23,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/admin/riders", label: "Riders", icon: "bike" },
     { href: "/admin/reports", label: "Reports", icon: "chart" },
     { href: "/admin/sms", label: "SMS log", icon: "send" },
+    { href: "/admin/sms-credit", label: "Buy SMS", icon: "wallet" },
     { href: "/admin/activity", label: "Audit log", icon: "history" },
     { href: "/admin/runbook", label: "Runbook", icon: "book" },
     { href: "/admin/settings", label: "Platform Settings", icon: "settings" },

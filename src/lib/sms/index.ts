@@ -69,10 +69,57 @@ async function logSms(
  * failover adapter if Moolre rejects with an auth/sender-ID error, and
  * swallows throws so a bad recipient can never block a server action.
  */
+function ghanaE164(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("233") && digits.length === 12) return `+${digits}`;
+  if (digits.startsWith("0") && digits.length === 10) return `+233${digits.slice(1)}`;
+  if (digits.length === 9) return `+233${digits}`;
+  return phone.trim().startsWith("+") ? phone.trim() : `+${digits}`;
+}
+
+/** Bought Taysend credit is used first. A miss falls through to Moolre. */
+async function sendViaTaysend(msg: SmsMessage): Promise<SmsResult | null> {
+  const apiKey = process.env.TAYSEND_API_KEY?.trim();
+  const from = (process.env.TAYSEND_SENDER_ID || env.MOOLRE_SMS_SENDER_ID || "").trim();
+  if (!apiKey || !from) return null;
+  try {
+    const response = await fetch(`${(process.env.TAYSEND_API_URL || "https://api.taysend.com").replace(/\/+$/, "")}/v1/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": crypto.randomUUID(),
+      },
+      body: JSON.stringify({
+        to: ghanaE164(msg.to),
+        sender_id: from,
+        message: msg.body,
+        type: "transactional",
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const result = (await response.json().catch(() => null)) as { id?: string; status?: string; error?: { message?: string } } | null;
+    const status = String(result?.status || "").toLowerCase();
+    if (response.ok && result?.id && !["failed", "rejected", "undelivered", "expired"].includes(status)) {
+      return { ok: true, providerMessageId: result.id, provider: "taysend" };
+    }
+    console.warn("[sms] Taysend did not accept the text:", result?.error?.message || status || response.status);
+    return null;
+  } catch (error) {
+    console.warn("[sms] Taysend did not accept the text:", error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
 export async function sendSms(msg: SmsMessage): Promise<SmsResult> {
   if (!msg.to || msg.to.trim().length < 7) {
     await logSms(msg, { ok: false, error: "Invalid recipient" }, "none");
     return { ok: false, error: "Invalid recipient" };
+  }
+  const viaTaysend = await sendViaTaysend(msg);
+  if (viaTaysend) {
+    await logSms(msg, viaTaysend, "taysend");
+    return viaTaysend;
   }
   const primary = pickAdapter();
   let result = await primary.send(msg);
