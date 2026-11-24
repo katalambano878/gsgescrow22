@@ -419,25 +419,4 @@ button {
     opacity: 1 !important;
     transform: none !important;
   }
-  .sms-credit-double-blink,
-  .sms-credit-double-blink-empty {
-    animation: none !important;
-  }
 }
-
-@keyframes sms-credit-double-blink {
-  0%, 42%, 100% { opacity: 1; box-shadow: var(--shadow-card); }
-  5%, 10% { opacity: 0.72; box-shadow: 0 0 0 2px color-mix(in oklch, var(--warning) 55%, transparent); }
-  15%, 20% { opacity: 0.72; box-shadow: 0 0 0 2px color-mix(in oklch, var(--warning) 55%, transparent); }
-  22%, 40% { opacity: 1; box-shadow: var(--shadow-card); }
-}
-
-@keyframes sms-credit-double-blink-empty {
-  0%, 42%, 100% { opacity: 1; box-shadow: var(--shadow-card); }
-  5%, 10% { opacity: 0.72; box-shadow: 0 0 0 2px color-mix(in oklch, var(--danger) 55%, transparent); }
-  15%, 20% { opacity: 0.72; box-shadow: 0 0 0 2px color-mix(in oklch, var(--danger) 55%, transparent); }
-  22%, 40% { opacity: 1; box-shadow: var(--shadow-card); }
-}
-
-.sms-credit-double-blink { animation: sms-credit-double-blink 4s ease-in-out infinite; }
-.sms-credit-double-blink-empty { animation: sms-credit-double-blink-empty 4s ease-in-out infinite; }

@@ -12,14 +12,11 @@ import { transactions, payouts, alerts, profiles } from "@/lib/db/schema";
 import { desc, sql } from "drizzle-orm";
 import { formatGhs, relativeTime } from "@/lib/utils";
 import type { TxnState } from "@/lib/state/transaction";
-import { getDashboardSmsCredit } from "@/lib/sms-credit-cache";
-import { SmsCreditDashboardCard } from "@/components/admin/SmsCreditDashboardCard";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Admin · Control room" };
 
 export default async function AdminDashboardPage() {
-  const smsCredit = await getDashboardSmsCredit();
   const stats = {
     gmvProtected: 0,
     activeDeals: 0,
@@ -102,7 +99,6 @@ export default async function AdminDashboardPage() {
             <Kpi label="Active deals" value={stats.activeDeals.toLocaleString()} icon={Activity} tone="info" />
             <Kpi label="Pending payouts" value={stats.pendingPayouts.toLocaleString()} icon={Wallet} tone="warning" linkHref="/admin/payouts/approvals" />
             <Kpi label="Open disputes" value={stats.openDisputes.toLocaleString()} icon={AlertTriangle} tone={stats.openDisputes > 0 ? "danger" : "success"} linkHref="/admin/disputes" />
-            <SmsCreditDashboardCard smsCredit={smsCredit} />
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6">
